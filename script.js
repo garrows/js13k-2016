@@ -1,4 +1,5 @@
-/* global dat, requestAnimationFrame, alert */
+/* global dat, requestAnimationFrame, alert, QwertyHancock, AudioContext */
+'use strict'
 
 var data = {
   x: 0,
@@ -11,11 +12,40 @@ var data = {
   fov: 1.0471975511965976,
   zNear: 1,
   zFar: 1000,
-  fps: 0
+  fps: 0,
+  oscillatorType: 'sawtooth'
 }
 var gui = new dat.GUI()
 var canvas = document.getElementById('glcanvas')
 var gl = canvas.getContext('webgl')
+
+// Audio stuff
+var context = new AudioContext()
+var masterVolume = context.createGain()
+var oscillators = {}
+var keyboard = new QwertyHancock({
+  id: 'keyboard',
+  width: 600,
+  height: 150,
+  octaves: 2
+})
+masterVolume.gain.value = 0.3
+masterVolume.connect(context.destination)
+
+keyboard.keyDown = function (note, frequency) {
+  console.log('Note', note, 'has been pressed. Its frequency is', frequency)
+  var osc = context.createOscillator()
+  osc.type = data.oscillatorType
+  osc.connect(context.destination)
+  masterVolume.connect(context.destination)
+  osc.frequency.value = frequency
+  oscillators[frequency] = osc
+  osc.start(context.currentTime)
+}
+
+keyboard.keyUp = function (note, frequency) {
+  oscillators[frequency].stop(context.currentTime)
+}
 
 gui.remember(data)
 gui.add(data, 'animateSpeed', 0, 1)
@@ -28,6 +58,7 @@ gui.add(data, 'lightZ', 0, 1)
 gui.add(data, 'fov', 0, Math.PI)
 gui.add(data, 'zNear', 1, 1000)
 gui.add(data, 'zFar', 0, 1000)
+gui.add(data, 'oscillatorType', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
 gui.add(data, 'fps').listen()
 
 var program = gl.createProgram()
@@ -490,4 +521,3 @@ function setNormals (gl) {
   ])
   gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW)
 }
-
