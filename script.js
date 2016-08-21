@@ -16,6 +16,7 @@ var data = {
   oscillatorType: 'sawtooth'
 }
 var gui = new dat.GUI()
+dat.GUI.toggleHide()
 var canvas = document.getElementById('glcanvas')
 var gl = canvas.getContext('webgl')
 
@@ -25,7 +26,7 @@ var masterVolume = context.createGain()
 var oscillators = {}
 var keyboard = new QwertyHancock({
   id: 'keyboard',
-  width: 600,
+  width: window.innerWidth,
   height: 150,
   octaves: 2
 })
