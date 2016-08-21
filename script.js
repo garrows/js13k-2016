@@ -6,6 +6,8 @@ var data = {
   y: -200,
   z: 0,
   r: 0,
+  velX: 0,
+  velY: 0,
   lightX: 0,
   lightY: 0,
   lightZ: 1,
@@ -73,10 +75,12 @@ keyboard.keyUp = function (note, frequency) {
 
 gui.remember(data)
 gui.add(data, 'animateSpeed', 0, 1)
-gui.add(data, 'x', -500, 500)
+gui.add(data, 'x', -500, 500).listen()
 gui.add(data, 'y', -2000, 2000).listen()
 gui.add(data, 'z', -500, 500)
 gui.add(data, 'r', 0, Math.PI * 2).listen()
+gui.add(data, 'velX', 0, 20).listen()
+gui.add(data, 'velY', 0, 20).listen()
 gui.add(data, 'lightX', 0, 1)
 gui.add(data, 'lightY', 0, 1)
 gui.add(data, 'lightZ', 0, 1)
@@ -174,6 +178,7 @@ var lastTimestamp = 0
 
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
+  var thrust = 0.0
   lastTimestamp = timestamp
   data.fps = 1000 / dt
 
@@ -181,10 +186,19 @@ function drawScene (timestamp) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
   // Move around the screen
-  data.y = data.y < -750 ? 100 : data.y - data.animateSpeed * dt
-  if (keyRight) data.r += 0.01 * dt
-  if (keyLeft) data.r -= 0.01 * dt
-  if (keyUp) data.y -= 0.3 * dt
+  if (keyRight) data.r -= 0.005 * dt
+  if (keyLeft) data.r += 0.005 * dt
+  if (keyUp) thrust = 0.0001 * dt
+  data.velX += Math.cos(data.r + Math.PI / 2) * thrust * dt
+  data.velY += Math.sin(data.r + Math.PI / 2) * thrust * dt
+  data.x -= data.velX
+  data.y -= data.velY
+
+  // Space limits
+  data.y = data.y < -750 ? 100 : data.y
+  data.y = data.y > 100 ? -750 : data.y
+  data.x = data.x > 700 ? -700 : data.x
+  data.x = data.x < -700 ? 700 : data.x
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
