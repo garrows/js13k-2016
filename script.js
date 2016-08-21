@@ -5,10 +5,11 @@ var data = {
   x: 0,
   y: 0,
   z: 0,
+  r: 0,
   lightX: 0,
   lightY: 0,
   lightZ: 1,
-  animateSpeed: 0.3,
+  animateSpeed: 0.0,
   fov: 1.0471975511965976,
   zNear: 1,
   zFar: 1000,
@@ -18,6 +19,9 @@ var data = {
   oscillatorDetune1: -10,
   oscillatorDetune2: 10
 }
+var keyLeft = false
+var keyRight = false
+var keyUp = false
 var gui = new dat.GUI()
 gui.close()
 var canvas = document.getElementById('glcanvas')
@@ -72,6 +76,7 @@ gui.add(data, 'animateSpeed', 0, 1)
 gui.add(data, 'x', -500, 500)
 gui.add(data, 'y', -2000, 2000).listen()
 gui.add(data, 'z', -500, 500)
+gui.add(data, 'r', 0, Math.PI * 2).listen()
 gui.add(data, 'lightX', 0, 1)
 gui.add(data, 'lightY', 0, 1)
 gui.add(data, 'lightZ', 0, 1)
@@ -83,6 +88,32 @@ gui.add(data, 'oscillatorType2', { sawtooth: 'sawtooth', triangle: 'triangle', s
 gui.add(data, 'oscillatorDetune1', -100, 100)
 gui.add(data, 'oscillatorDetune2', -100, 100)
 gui.add(data, 'fps').listen()
+
+document.onkeydown = document.onkeyup = (e) => {
+  switch (e.keyCode) {
+    case 37:
+      keyLeft = e.type === 'keydown'
+      break
+    case 39:
+      keyRight = e.type === 'keydown'
+      break
+    case 38:
+      keyUp = e.type === 'keydown'
+      break
+  // default:
+  //   console.log(e.code, e.keyCode)
+  }
+}
+
+var touchEvent = (e) => {
+  keyLeft = keyRight = keyUp = false
+  keyLeft = Array.from(e.touches).some(t => t.clientX < window.innerWidth / 2)
+  keyRight = Array.from(e.touches).some(t => t.clientX > window.innerWidth / 2)
+  keyUp = keyLeft && keyRight
+}
+document.addEventListener('touchstart', touchEvent, false)
+document.addEventListener('touchmove', touchEvent, false)
+document.addEventListener('touchend', touchEvent, false)
 
 var program = gl.createProgram()
 var newShader = function (id, type) {
@@ -153,6 +184,9 @@ function drawScene (timestamp) {
   if (data.animateSpeed) {
     data.y = data.y < -750 ? 100 : data.y - data.animateSpeed * dt
   }
+  if (keyRight) data.r += 0.01 * dt
+  if (keyLeft) data.r -= 0.01 * dt
+  if (keyUp) data.y -= 0.1 * dt
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
@@ -164,12 +198,15 @@ function drawScene (timestamp) {
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
 
-  function drawShip (x, y, z) {
+  function drawShip (x, y, z, angle) {
     var translationMatrix = makeTranslation(x, y, z)
+    var rotationMatrix = makeZRotation(angle)
 
     // Multiply the matrices.
     var matrix = translationMatrix
     matrix = matrixMultiply(translationMatrix, viewMatrix)
+    matrix = matrixMultiply(matrix, rotationMatrix)
+
     var worldViewProjectionMatrix = matrixMultiply(matrix, projectionMatrix)
 
     // Set the matrix.
@@ -185,11 +222,11 @@ function drawScene (timestamp) {
     gl.drawArrays(gl.TRIANGLES, 0, geometryLength / 3)
   }
 
-  drawShip(data.x, data.y, data.z)
-  drawShip(100, -60, 50)
-  drawShip(-100, -250, -110)
-  drawShip(150, -290, -210)
-  drawShip(250, -400, -300)
+  drawShip(data.x, data.y, data.z, data.r)
+  drawShip(100, -60, 50, 0)
+  drawShip(-100, -250, -110, 0)
+  drawShip(150, -290, -210, 0)
+  drawShip(250, -400, -300, 0)
 
   requestAnimationFrame(drawScene)
 }
@@ -543,4 +580,39 @@ function setNormals (gl) {
     -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0
   ])
   gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW)
+}
+
+function makeXRotation (angleInRadians) {
+  var c = Math.cos(angleInRadians)
+  var s = Math.sin(angleInRadians)
+
+  return [
+    1, 0, 0, 0,
+    0, c, s, 0,
+    0, -s, c, 0,
+    0, 0, 0, 1
+  ]
+}
+
+function makeYRotation (angleInRadians) {
+  var c = Math.cos(angleInRadians)
+  var s = Math.sin(angleInRadians)
+
+  return [
+    c, 0, -s, 0,
+    0, 1, 0, 0,
+    s, 0, c, 0,
+    0, 0, 0, 1
+  ]
+}
+
+function makeZRotation (angleInRadians) {
+  var c = Math.cos(angleInRadians)
+  var s = Math.sin(angleInRadians)
+  return [
+    c, s, 0, 0,
+    -s, c, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+  ]
 }
