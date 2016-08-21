@@ -3,7 +3,7 @@
 
 var data = {
   x: 0,
-  y: 0,
+  y: -200,
   z: 0,
   r: 0,
   lightX: 0,
@@ -158,7 +158,7 @@ gl.bindBuffer(gl.ARRAY_BUFFER, geometryBuffer)
 gl.enableVertexAttribArray(positionLocation)
 gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0)
 
-var geometryLength = setGeometry(gl)
+var geo = setGeometry(gl)
 
 // Create a buffer for normals.
 var buffer = gl.createBuffer()
@@ -181,12 +181,10 @@ function drawScene (timestamp) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
   // Move around the screen
-  if (data.animateSpeed) {
-    data.y = data.y < -750 ? 100 : data.y - data.animateSpeed * dt
-  }
+  data.y = data.y < -750 ? 100 : data.y - data.animateSpeed * dt
   if (keyRight) data.r += 0.01 * dt
   if (keyLeft) data.r -= 0.01 * dt
-  if (keyUp) data.y -= 0.1 * dt
+  if (keyUp) data.y -= 0.3 * dt
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
@@ -198,7 +196,7 @@ function drawScene (timestamp) {
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
 
-  function drawShip (x, y, z, angle) {
+  function drawShip (x, y, z, angle, planet) {
     var translationMatrix = makeTranslation(x, y, z)
     var rotationMatrix = makeZRotation(angle)
 
@@ -219,14 +217,18 @@ function drawScene (timestamp) {
     gl.uniform3fv(reverseLightDirectionLocation, normalize([ data.lightX, data.lightY, data.lightZ ]))
 
     // Draw the geometry.
-    gl.drawArrays(gl.TRIANGLES, 0, geometryLength / 3)
+    if (planet) {
+      gl.drawArrays(gl.TRIANGLES, geo.ship, geo.planet)
+    } else {
+      gl.drawArrays(gl.TRIANGLES, 0, geo.ship)
+    }
   }
 
-  drawShip(data.x, data.y, data.z, data.r)
-  drawShip(100, -60, 50, 0)
-  drawShip(-100, -250, -110, 0)
-  drawShip(150, -290, -210, 0)
-  drawShip(250, -400, -300, 0)
+  drawShip(data.x, data.y, data.z, data.r, false)
+  drawShip(100, -60, 50, 0, true)
+  drawShip(-100, -250, -110, 0, true)
+  drawShip(150, -290, -210, 0, true)
+  drawShip(250, -400, -300, 0, true)
 
   requestAnimationFrame(drawScene)
 }
@@ -407,6 +409,7 @@ function setGeometry (gl) {
   var WING_LENGTH = 50
   var TOP_RIDGE_LENGTH = 100
   var REAR_RIDGE_LENGTH = 20
+  var PLANET_WIDTH = 20
   var positions = new Float32Array([
 
     // front top right
@@ -448,10 +451,51 @@ function setGeometry (gl) {
     // rear back left
     0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // middle
     0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
-    -WING_LENGTH, TOP_RIDGE_LENGTH, 0 // right
+    -WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
+
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, // triangle 1 : begin
+    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, // triangle 1 : end
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, // triangle 2 : begin
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, // triangle 2 : end
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH
   ])
+
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
-  return positions.length
+  return {
+    ship: 24,
+    planet: 12 * 3
+  }
 }
 
 function setNormals (gl) {
