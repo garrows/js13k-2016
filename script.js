@@ -13,10 +13,13 @@ var data = {
   zNear: 1,
   zFar: 1000,
   fps: 0,
-  oscillatorType: 'sawtooth'
+  oscillatorType1: 'sawtooth',
+  oscillatorType2: 'triangle',
+  oscillatorDetune1: -10,
+  oscillatorDetune2: 10
 }
 var gui = new dat.GUI()
-dat.GUI.toggleHide()
+gui.close()
 var canvas = document.getElementById('glcanvas')
 var gl = canvas.getContext('webgl')
 
@@ -36,16 +39,32 @@ masterVolume.connect(context.destination)
 keyboard.keyDown = function (note, frequency) {
   console.log('Note', note, 'has been pressed. Its frequency is', frequency)
   var osc = context.createOscillator()
-  osc.type = data.oscillatorType
-  osc.connect(context.destination)
-  masterVolume.connect(context.destination)
+  var osc2 = context.createOscillator()
+
   osc.frequency.value = frequency
-  oscillators[frequency] = osc
+  osc.type = data.oscillatorType1
+
+  osc2.frequency.value = frequency
+  osc2.type = data.oscillatorType1
+
+  osc.detune.value = data.oscillatorDetune1
+  osc2.detune.value = data.oscillatorDetune2
+
+  osc.connect(masterVolume)
+  osc2.connect(masterVolume)
+
+  masterVolume.connect(context.destination)
+
+  oscillators[frequency] = [osc, osc2]
+
   osc.start(context.currentTime)
+  osc2.start(context.currentTime)
 }
 
 keyboard.keyUp = function (note, frequency) {
-  oscillators[frequency].stop(context.currentTime)
+  oscillators[frequency].forEach(function (oscillator) {
+    oscillator.stop(context.currentTime)
+  })
 }
 
 gui.remember(data)
@@ -59,7 +78,10 @@ gui.add(data, 'lightZ', 0, 1)
 gui.add(data, 'fov', 0, Math.PI)
 gui.add(data, 'zNear', 1, 1000)
 gui.add(data, 'zFar', 0, 1000)
-gui.add(data, 'oscillatorType', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
+gui.add(data, 'oscillatorType1', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
+gui.add(data, 'oscillatorType2', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
+gui.add(data, 'oscillatorDetune1', -100, 100)
+gui.add(data, 'oscillatorDetune2', -100, 100)
 gui.add(data, 'fps').listen()
 
 var program = gl.createProgram()
