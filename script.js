@@ -8,13 +8,14 @@ var data = {
   r: 0,
   velX: 0,
   velY: 0,
-  lightX: 0,
-  lightY: 0,
+  cameraDistance: 500,
+  lightX: 1,
+  lightY: 1,
   lightZ: 1,
   animateSpeed: 0.0,
   fov: 1.0471975511965976,
   zNear: 1,
-  zFar: 1000,
+  zFar: 5000,
   fps: 0,
   oscillatorType1: 'sawtooth',
   oscillatorType2: 'triangle',
@@ -84,9 +85,10 @@ gui.add(data, 'velY', 0, 20).listen()
 gui.add(data, 'lightX', 0, 1)
 gui.add(data, 'lightY', 0, 1)
 gui.add(data, 'lightZ', 0, 1)
+gui.add(data, 'cameraDistance', 0, 2000)
 gui.add(data, 'fov', 0, Math.PI)
 gui.add(data, 'zNear', 1, 1000)
-gui.add(data, 'zFar', 0, 1000)
+gui.add(data, 'zFar', 0, 5000)
 gui.add(data, 'oscillatorType1', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
 gui.add(data, 'oscillatorType2', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
 gui.add(data, 'oscillatorDetune1', -100, 100)
@@ -150,7 +152,6 @@ gl.enable(gl.DEPTH_TEST)
 // look up where the vertex data needs to go.
 var positionLocation = gl.getAttribLocation(program, 'a_position')
 var normalLocation = gl.getAttribLocation(program, 'a_normal')
-// var matrixLocation = gl.getUniformLocation(program, 'u_matrix')
 var colorLocation = gl.getUniformLocation(program, 'u_color')
 var reverseLightDirectionLocation = gl.getUniformLocation(program, 'u_reverseLightDirection')
 var worldViewProjectionLocation = gl.getUniformLocation(program, 'u_worldViewProjection')
@@ -205,7 +206,7 @@ function drawScene (timestamp) {
   var projectionMatrix = makePerspective(data.fov, aspect, data.zNear, data.zFar)
 
   // Use matrix math to compute a position on the circle.
-  var cameraMatrix = makeTranslation(data.x, data.y + 50, data.z + 200)
+  var cameraMatrix = makeTranslation(data.x, data.y + 50, data.z + data.cameraDistance)
 
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
