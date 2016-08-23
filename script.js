@@ -1,6 +1,11 @@
 /* global dat, requestAnimationFrame, alert, QwertyHancock, AudioContext */
 'use strict'
 
+var WINDOW_INNERHEIGHT = window.innerHeight
+var WINDOW_INNERWIDTH = window.innerWidth
+var MATH_RANDOM = Math.random
+var MATH_PI = Math.PI
+
 var data = {
   x: 0,
   y: -200,
@@ -28,8 +33,8 @@ var keyUp = false
 var gui = new dat.GUI()
 gui.close()
 var canvas = document.getElementById('glcanvas')
-canvas.width = window.innerWidth
-canvas.height = window.innerHeight
+canvas.width = WINDOW_INNERWIDTH
+canvas.height = WINDOW_INNERHEIGHT
 var gl = canvas.getContext('webgl')
 
 // Audio stuff
@@ -38,7 +43,7 @@ var masterVolume = context.createGain()
 var oscillators = {}
 var keyboard = new QwertyHancock({
   id: 'keyboard',
-  width: window.innerWidth,
+  width: WINDOW_INNERWIDTH,
   height: 150,
   octaves: 2
 })
@@ -81,14 +86,14 @@ gui.add(data, 'animateSpeed', 0, 1)
 gui.add(data, 'x', -500, 500).listen()
 gui.add(data, 'y', -2000, 2000).listen()
 gui.add(data, 'z', -500, 500)
-gui.add(data, 'r', 0, Math.PI * 2).listen()
+gui.add(data, 'r', 0, MATH_PI * 2).listen()
 gui.add(data, 'velX', 0, 20).listen()
 gui.add(data, 'velY', 0, 20).listen()
 gui.add(data, 'lightX', 0, 1)
 gui.add(data, 'lightY', 0, 1)
 gui.add(data, 'lightZ', 0, 1)
 gui.add(data, 'cameraDistance', 0, 2000)
-gui.add(data, 'fov', 0, Math.PI)
+gui.add(data, 'fov', 0, MATH_PI)
 gui.add(data, 'zNear', 1, 1000)
 gui.add(data, 'zFar', 0, 5000)
 gui.add(data, 'oscillatorType1', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
@@ -115,8 +120,8 @@ document.onkeydown = document.onkeyup = (e) => {
 
 var touchEvent = (e) => {
   keyLeft = keyRight = keyUp = false
-  keyLeft = Array.from(e.touches).some(t => t.clientX < window.innerWidth / 2)
-  keyRight = Array.from(e.touches).some(t => t.clientX > window.innerWidth / 2)
+  keyLeft = Array.from(e.touches).some(t => t.clientX < WINDOW_INNERWIDTH / 2)
+  keyRight = Array.from(e.touches).some(t => t.clientX > WINDOW_INNERWIDTH / 2)
   keyUp = keyLeft && keyRight
 }
 document.addEventListener('touchstart', touchEvent, false)
@@ -182,7 +187,11 @@ var lastTimestamp = 0
 // Generate stars
 var stars = []
 for (var i = 0; i < 100; i++) {
-  stars.push([Math.random() * 1000, Math.random() * 1000, 0, Math.random() * Math.PI * 2, 'star'])
+  // TODO: DO math for this
+  var LAZY_MULTIPLIER_FIX_ME = 5
+  var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
+  var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
+  stars.push([x, y, 0, 0, 'star'])
 }
 
 function drawScene (timestamp) {
@@ -198,8 +207,8 @@ function drawScene (timestamp) {
   if (keyRight) data.r -= 0.005 * dt
   if (keyLeft) data.r += 0.005 * dt
   if (keyUp) thrust = 0.0001 * dt
-  data.velX += Math.cos(data.r + Math.PI / 2) * thrust * dt
-  data.velY += Math.sin(data.r + Math.PI / 2) * thrust * dt
+  data.velX += Math.cos(data.r + MATH_PI / 2) * thrust * dt
+  data.velY += Math.sin(data.r + MATH_PI / 2) * thrust * dt
   data.x -= data.velX
   data.y -= data.velY
 
@@ -248,7 +257,7 @@ function drawScene (timestamp) {
         gl.drawArrays(gl.TRIANGLES, geo.ship, geo.planet)
         break
       case 'star':
-        var r = Math.random()
+        var r = MATH_RANDOM()
         var b = 1 - r
         gl.uniform4fv(colorLocation, [ r, 0, b, 1 ]) // whiteish
         gl.drawArrays(gl.TRIANGLES, geo.ship + geo.planet, geo.star)
@@ -262,7 +271,7 @@ function drawScene (timestamp) {
 
   stars.forEach(s => drawShip.apply(this, s))
 
-  drawShip(100, -60, 50, 0, 'planet')
+  drawShip(100, -60, 0, 0, 'planet')
   drawShip(-100, -250, -110, 0, 'planet')
   drawShip(150, -290, -210, 0, 'planet')
   drawShip(250, -400, -300, 0, 'planet')
@@ -377,7 +386,7 @@ function makeInverse (m) {
 }
 
 function makePerspective (fieldOfViewInRadians, aspect, near, far) {
-  var f = Math.tan(Math.PI * 0.5 - 0.5 * fieldOfViewInRadians)
+  var f = Math.tan(MATH_PI * 0.5 - 0.5 * fieldOfViewInRadians)
   var rangeInv = 1.0 / (near - far)
 
   return [
