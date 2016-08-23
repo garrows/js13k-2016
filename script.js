@@ -28,6 +28,8 @@ var keyUp = false
 var gui = new dat.GUI()
 gui.close()
 var canvas = document.getElementById('glcanvas')
+canvas.width = window.innerWidth
+canvas.height = window.innerHeight
 var gl = canvas.getContext('webgl')
 
 // Audio stuff
@@ -177,6 +179,12 @@ setNormals(gl)
 // Draw the scene.
 var lastTimestamp = 0
 
+// Generate stars
+var stars = []
+for (var i = 0; i < 100; i++) {
+  stars.push([Math.random() * 1000, Math.random() * 1000, 0, Math.random() * Math.PI * 2, 'star'])
+}
+
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
   var thrust = 0.0
@@ -211,7 +219,7 @@ function drawScene (timestamp) {
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
 
-  function drawShip (x, y, z, angle, planet) {
+  function drawShip (x, y, z, angle, type) {
     var translationMatrix = makeTranslation(x, y, z)
     var rotationMatrix = makeZRotation(angle)
 
@@ -226,24 +234,38 @@ function drawScene (timestamp) {
     gl.uniformMatrix4fv(worldViewProjectionLocation, false, worldViewProjectionMatrix)
     gl.uniformMatrix4fv(worldLocation, false, translationMatrix)
 
-    // Set the color to use
-    gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ]) // green
     // set the light direction.
     gl.uniform3fv(reverseLightDirectionLocation, normalize([ data.lightX, data.lightY, data.lightZ ]))
 
     // Draw the geometry.
-    if (planet) {
-      gl.drawArrays(gl.TRIANGLES, geo.ship, geo.planet)
-    } else {
-      gl.drawArrays(gl.TRIANGLES, 0, geo.ship)
+    switch (type) {
+      case 'ship':
+        gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ]) // green
+        gl.drawArrays(gl.TRIANGLES, 0, geo.ship)
+        break
+      case 'planet':
+        gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ]) // green
+        gl.drawArrays(gl.TRIANGLES, geo.ship, geo.planet)
+        break
+      case 'star':
+        var r = Math.random()
+        var b = 1 - r
+        gl.uniform4fv(colorLocation, [ r, 0, b, 1 ]) // whiteish
+        gl.drawArrays(gl.TRIANGLES, geo.ship + geo.planet, geo.star)
+        break
+      default:
+        throw new Error('up')
     }
   }
 
-  drawShip(data.x, data.y, data.z, data.r, false)
-  drawShip(100, -60, 50, 0, true)
-  drawShip(-100, -250, -110, 0, true)
-  drawShip(150, -290, -210, 0, true)
-  drawShip(250, -400, -300, 0, true)
+  drawShip(data.x, data.y, data.z, data.r, 'ship')
+
+  stars.forEach(s => drawShip.apply(this, s))
+
+  drawShip(100, -60, 50, 0, 'planet')
+  drawShip(-100, -250, -110, 0, 'planet')
+  drawShip(150, -290, -210, 0, 'planet')
+  drawShip(250, -400, -300, 0, 'planet')
 
   requestAnimationFrame(drawScene)
 }
@@ -425,6 +447,9 @@ function setGeometry (gl) {
   var TOP_RIDGE_LENGTH = 100
   var REAR_RIDGE_LENGTH = 20
   var PLANET_WIDTH = 20
+  var STAR_LONG = 20
+  var STAR_SHORT = 10
+  var STAR_DISTANCE = -1500
   var positions = new Float32Array([
 
     // front top right
@@ -503,13 +528,23 @@ function setGeometry (gl) {
     -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
     PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
     -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+
+    // Star
+    0, STAR_LONG, STAR_DISTANCE, // top
+    -STAR_LONG, -STAR_SHORT, STAR_DISTANCE, // bottom left
+    STAR_LONG, -STAR_SHORT, STAR_DISTANCE, // bottom right
+
+    0, -STAR_LONG, STAR_DISTANCE, // bottom
+    STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top right
+    -STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top left
   ])
 
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
   return {
     ship: 24,
-    planet: 12 * 3
+    planet: 12 * 3,
+    star: 2 * 3
   }
 }
 
