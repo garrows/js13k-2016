@@ -44,11 +44,42 @@ var oscillators = {}
 var keyboard = new QwertyHancock({
   id: 'keyboard',
   width: WINDOW_INNERWIDTH,
-  height: 150,
+  height: 0,
   octaves: 2
 })
-masterVolume.gain.value = 0.3
+masterVolume.gain.value = 0.05
 masterVolume.connect(context.destination)
+
+var thrustOsc1
+var thrustOsc2
+function stopThrustSound () {
+  if (!thrustOsc1) return
+  thrustOsc1.stop(context.currentTime)
+  thrustOsc2.stop(context.currentTime)
+  thrustOsc1 = thrustOsc2 = null
+}
+function playThrustSound () {
+  if (thrustOsc1) return
+  thrustOsc1 = context.createOscillator()
+  thrustOsc2 = context.createOscillator()
+
+  thrustOsc1.frequency.value = 50
+  thrustOsc2.frequency.value = 30
+  thrustOsc1.type = 'sawtooth'
+  thrustOsc2.type = 'square'
+
+  // thrustOsc1.detune.value = -10
+  // thrustOsc2.detune.value = 10
+
+  thrustOsc1.connect(masterVolume)
+  thrustOsc2.connect(masterVolume)
+
+  masterVolume.connect(context.destination)
+
+  thrustOsc1.start(context.currentTime)
+  thrustOsc2.start(context.currentTime)
+  setTimeout(stopThrustSound, 3000)
+}
 
 keyboard.keyDown = function (note, frequency) {
   console.log('Note', note, 'has been pressed. Its frequency is', frequency)
@@ -59,7 +90,7 @@ keyboard.keyDown = function (note, frequency) {
   osc.type = data.oscillatorType1
 
   osc2.frequency.value = frequency
-  osc2.type = data.oscillatorType1
+  osc2.type = data.oscillatorType2
 
   osc.detune.value = data.oscillatorDetune1
   osc2.detune.value = data.oscillatorDetune2
@@ -247,7 +278,7 @@ function drawScene (timestamp) {
         gl.drawArrays(gl.TRIANGLES, 0, geo.ship)
         break
       case 'thrust':
-        gl.uniform4fv(colorLocation, [ 1, 0, 0, 0.8 ])
+        gl.uniform4fv(colorLocation, [ 1, 0.5, 0, 0.8 ])
         gl.drawArrays(gl.TRIANGLES, geo.ship + geo.planet + geo.star, geo.thrust)
         break
       case 'planet':
@@ -266,7 +297,12 @@ function drawScene (timestamp) {
   }
 
   drawShip(data.x, data.y, data.z, data.r, 'ship')
-  if (keyUp) drawShip(data.x, data.y, data.z, data.r, 'thrust')
+  if (keyUp) {
+    drawShip(data.x, data.y, data.z, data.r, 'thrust')
+    playThrustSound()
+  } else {
+    stopThrustSound()
+  }
 
   stars.forEach(s => drawShip.apply(this, s))
 
@@ -550,10 +586,10 @@ function setGeometry (gl) {
     0, -STAR_LONG, STAR_DISTANCE, // bottom
     STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top right
     -STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top left
-    
+
     0, THRUST_END, THRUST_Z, // bottom
     -THRUST_WIDTH, THRUST_START, THRUST_Z, // top left
-    THRUST_WIDTH, THRUST_START, THRUST_Z, // top right
+    THRUST_WIDTH, THRUST_START, THRUST_Z // top right
   ])
 
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
