@@ -212,12 +212,6 @@ function drawScene (timestamp) {
   data.x -= data.velX
   data.y -= data.velY
 
-  // Space limits
-  data.y = data.y < -750 ? 100 : data.y
-  data.y = data.y > 100 ? -750 : data.y
-  data.x = data.x > 700 ? -700 : data.x
-  data.x = data.x < -700 ? 700 : data.x
-
   // Compute the matrices
   var aspect = canvas.width / canvas.height
   var projectionMatrix = makePerspective(data.fov, aspect, data.zNear, data.zFar)
@@ -249,11 +243,15 @@ function drawScene (timestamp) {
     // Draw the geometry.
     switch (type) {
       case 'ship':
-        gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ]) // green
+        gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ])
         gl.drawArrays(gl.TRIANGLES, 0, geo.ship)
         break
+      case 'thrust':
+        gl.uniform4fv(colorLocation, [ 1, 0, 0, 0.8 ])
+        gl.drawArrays(gl.TRIANGLES, geo.ship + geo.planet + geo.star, geo.thrust)
+        break
       case 'planet':
-        gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ]) // green
+        gl.uniform4fv(colorLocation, [ 0.2, 0.7, 0.2, 1 ])
         gl.drawArrays(gl.TRIANGLES, geo.ship, geo.planet)
         break
       case 'star':
@@ -268,6 +266,7 @@ function drawScene (timestamp) {
   }
 
   drawShip(data.x, data.y, data.z, data.r, 'ship')
+  if (keyUp) drawShip(data.x, data.y, data.z, data.r, 'thrust')
 
   stars.forEach(s => drawShip.apply(this, s))
 
@@ -458,7 +457,11 @@ function setGeometry (gl) {
   var PLANET_WIDTH = 20
   var STAR_LONG = 20
   var STAR_SHORT = 10
-  var STAR_DISTANCE = -1500
+  var STAR_DISTANCE = -2000
+  var THRUST_START = TOP_RIDGE_LENGTH + 5
+  var THRUST_END = 180
+  var THRUST_WIDTH = 30
+  var THRUST_Z = 5
   var positions = new Float32Array([
 
     // front top right
@@ -547,13 +550,18 @@ function setGeometry (gl) {
     0, -STAR_LONG, STAR_DISTANCE, // bottom
     STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top right
     -STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top left
+    
+    0, THRUST_END, THRUST_Z, // bottom
+    -THRUST_WIDTH, THRUST_START, THRUST_Z, // top left
+    THRUST_WIDTH, THRUST_START, THRUST_Z, // top right
   ])
 
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
   return {
     ship: 24,
     planet: 12 * 3,
-    star: 2 * 3
+    star: 2 * 3,
+    thrust: 3
   }
 }
 
