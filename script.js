@@ -8,9 +8,9 @@ var MATH_PI = Math.PI
 
 var data = {
   x: 0,
-  y: -200,
+  y: 0,
   z: 0,
-  r: 0,
+  r: MATH_PI,
   velX: 0,
   velY: 0,
   cameraDistance: 500,
@@ -201,7 +201,7 @@ gl.bindBuffer(gl.ARRAY_BUFFER, geometryBuffer)
 gl.enableVertexAttribArray(positionLocation)
 gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0)
 
-var geo = setGeometry(gl)
+setGeometry(gl)
 
 // Create a buffer for normals.
 var buffer = gl.createBuffer()
@@ -216,14 +216,26 @@ setNormals(gl)
 var lastTimestamp = 0
 
 // Generate stars
-var stars = []
-for (var i = 0; i < 100; i++) {
+var entities = []
+var LAZY_MULTIPLIER_FIX_ME = 30
+var PLANET_COUNT = 500
+var STAR_COUNT = 1500
+for (var i = 0; i < PLANET_COUNT + STAR_COUNT; i++) {
   // TODO: DO math for this
-  var LAZY_MULTIPLIER_FIX_ME = 5
   var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
   var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
-  stars.push([x, y, 0, 0, 'star'])
+  if (i < PLANET_COUNT) {
+    if (x < 300 && x > -300 && y < 300 && y > -300) {
+      // too close, try again
+      i--
+    } else {
+      entities.push([x, y, 0, 0, 'planet'])
+    }
+  } else {
+    entities.push([x, y, 0, 0, 'star'])
+  }
 }
+entities.push([data.x, data.y - 300, 0, 0, 'planet'])
 
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
@@ -248,12 +260,15 @@ function drawScene (timestamp) {
   var projectionMatrix = makePerspective(data.fov, aspect, data.zNear, data.zFar)
 
   // Use matrix math to compute a position on the circle.
-  var cameraMatrix = makeTranslation(data.x, data.y + 50, data.z + data.cameraDistance)
+  var cameraMatrix = makeTranslation(data.x, data.y, data.z + data.cameraDistance)
 
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
 
-  function drawShip (x, y, z, angle, type) {
+  // set the light direction.
+  gl.uniform3fv(reverseLightDirectionLocation, normalize([ data.lightX, data.lightY, data.lightZ ]))
+
+  function drawEntity (x, y, z, angle, type) {
     var translationMatrix = makeTranslation(x, y, z)
     var rotationMatrix = makeZRotation(angle)
 
@@ -268,53 +283,184 @@ function drawScene (timestamp) {
     gl.uniformMatrix4fv(worldViewProjectionLocation, false, worldViewProjectionMatrix)
     gl.uniformMatrix4fv(worldLocation, false, translationMatrix)
 
-    // set the light direction.
-    gl.uniform3fv(reverseLightDirectionLocation, normalize([ data.lightX, data.lightY, data.lightZ ]))
-
     // Draw the geometry.
     switch (type) {
       case 'ship':
         gl.uniform4fv(colorLocation, [ 0.7, 0.2, 0.2, 1 ])
-        gl.drawArrays(gl.TRIANGLES, 0, geo.ship)
+        gl.drawArrays(gl.TRIANGLES, BUFFER_SHIP_START, BUFFER_SHIP_LENGTH)
         break
       case 'thrust':
         gl.uniform4fv(colorLocation, [ 1, 0.5, 0, 0.8 ])
-        gl.drawArrays(gl.TRIANGLES, geo.ship + geo.planet + geo.star, geo.thrust)
+        gl.drawArrays(gl.TRIANGLES, BUFFER_THRUST_START, BUFFER_THRUST_LENGTH)
         break
       case 'planet':
         gl.uniform4fv(colorLocation, [ 0.2, 0.7, 0.2, 1 ])
-        gl.drawArrays(gl.TRIANGLES, geo.ship, geo.planet)
+        gl.drawArrays(gl.TRIANGLES, BUFFER_PLANET_START, BUFFER_PLANET_LENGTH)
+        break
+      case 'marker':
+        gl.uniform4fv(colorLocation, [ 1, 1, 1, 1 ])
+        gl.drawArrays(gl.TRIANGLES, BUFFER_MARKER_START, BUFFER_MARKER_LENGTH)
         break
       case 'star':
         var r = MATH_RANDOM()
         var b = 1 - r
         gl.uniform4fv(colorLocation, [ r, 0, b, 1 ]) // whiteish
-        gl.drawArrays(gl.TRIANGLES, geo.ship + geo.planet, geo.star)
+        gl.drawArrays(gl.TRIANGLES, BUFFER_STAR_START, BUFFER_STAR_LENGTH)
         break
       default:
         throw new Error('up')
     }
   }
 
-  drawShip(data.x, data.y, data.z, data.r, 'ship')
+  drawEntity(data.x, data.y, data.z, data.r, 'ship')
   if (keyUp) {
-    drawShip(data.x, data.y, data.z, data.r, 'thrust')
+    drawEntity(data.x, data.y, data.z, data.r, 'thrust')
     playThrustSound()
   } else {
     stopThrustSound()
   }
 
-  stars.forEach(s => drawShip.apply(this, s))
-
-  drawShip(100, -60, 0, 0, 'planet')
-  drawShip(-100, -250, -110, 0, 'planet')
-  drawShip(150, -290, -210, 0, 'planet')
-  drawShip(250, -400, -300, 0, 'planet')
+  entities.forEach(e => drawEntity.apply(this, e))
 
   requestAnimationFrame(drawScene)
 }
 
 requestAnimationFrame(drawScene)
+
+var BUFFER_SHIP_START = 0
+var BUFFER_SHIP_LENGTH = 24
+var BUFFER_PLANET_START = BUFFER_SHIP_START + BUFFER_SHIP_LENGTH
+var BUFFER_PLANET_LENGTH = 12 * 3
+var BUFFER_STAR_START = BUFFER_PLANET_START + BUFFER_PLANET_LENGTH
+var BUFFER_STAR_LENGTH = 2 * 3
+var BUFFER_THRUST_START = BUFFER_STAR_START + BUFFER_STAR_LENGTH
+var BUFFER_THRUST_LENGTH = 3
+var BUFFER_MARKER_START = BUFFER_THRUST_START + BUFFER_THRUST_LENGTH
+var BUFFER_MARKER_LENGTH = 3
+
+// Make the ship
+function setGeometry (gl) {
+  var MIDDLE_HEIGHT = 40
+  var WING_SPAN = 10
+  var TIP_LENGTH = -15
+  var TOP_RIDGE_LENGTH = 5
+  var WING_LENGTH = TOP_RIDGE_LENGTH + 10
+  var REAR_RIDGE_LENGTH = 5
+
+  var THRUST_START = TOP_RIDGE_LENGTH * 1.1
+  var THRUST_END = 30
+  var THRUST_WIDTH = WING_SPAN * 0.6
+  var THRUST_Z = 5
+
+  var PLANET_WIDTH = 100
+  var STAR_LONG = 20
+  var STAR_SHORT = 10
+  var STAR_DISTANCE = -2000
+
+  var MARKER_SIZE = 5
+
+  var positions = new Float32Array([
+
+    // front top right
+    0, TIP_LENGTH, 0, // tip
+    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // bottom
+    WING_SPAN, WING_LENGTH, 0, // right
+
+    // front top left
+    0, TIP_LENGTH, 0, // tip
+    -WING_SPAN, WING_LENGTH, 0, // left
+    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // bottom
+
+    // front back right
+    0, TIP_LENGTH, 0, // tip
+    WING_SPAN, WING_LENGTH, 0, // right
+    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // bottom
+
+    // front back left
+    0, TIP_LENGTH, 0, // tip
+    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // bottom
+    -WING_SPAN, WING_LENGTH, 0, // left
+
+    // --------rear----------
+    // rear top right
+    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // middle
+    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
+    WING_SPAN, WING_LENGTH, 0, // right
+
+    // rear top left
+    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // middle
+    -WING_SPAN, WING_LENGTH, 0, // right
+    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
+
+    // rear back right
+    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
+    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // middle
+    WING_SPAN, WING_LENGTH, 0, // right
+
+    // rear back left
+    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // middle
+    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
+    -WING_SPAN, WING_LENGTH, 0, // right
+
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, // triangle 1 : begin
+    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, // triangle 1 : end
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, // triangle 2 : begin
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, // triangle 2 : end
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
+    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
+
+    // Star
+    0, STAR_LONG, STAR_DISTANCE, // top
+    -STAR_LONG, -STAR_SHORT, STAR_DISTANCE, // bottom left
+    STAR_LONG, -STAR_SHORT, STAR_DISTANCE, // bottom right
+
+    0, -STAR_LONG, STAR_DISTANCE, // bottom
+    STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top right
+    -STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top left
+
+    // Thrust
+    0, THRUST_END, THRUST_Z, // bottom
+    -THRUST_WIDTH, THRUST_START, THRUST_Z, // top left
+    THRUST_WIDTH, THRUST_START, THRUST_Z, // top right
+
+    // Marker
+    0, -MARKER_SIZE, 0, // top
+    MARKER_SIZE, MARKER_SIZE, 0, // right
+    -MARKER_SIZE, MARKER_SIZE, 0 // left
+  ])
+
+  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
+}
 
 function makeTranslation (tx, ty, tz) {
   return [
@@ -484,123 +630,6 @@ function matrixMultiply (a, b) {
   ]
 }
 
-// Make the ship
-function setGeometry (gl) {
-  var MIDDLE_HEIGHT = 25
-  var WING_LENGTH = 50
-  var TOP_RIDGE_LENGTH = 100
-  var REAR_RIDGE_LENGTH = 20
-  var PLANET_WIDTH = 20
-  var STAR_LONG = 20
-  var STAR_SHORT = 10
-  var STAR_DISTANCE = -2000
-  var THRUST_START = TOP_RIDGE_LENGTH + 5
-  var THRUST_END = 180
-  var THRUST_WIDTH = 30
-  var THRUST_Z = 5
-  var positions = new Float32Array([
-
-    // front top right
-    0, 0, 0, // tip
-    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // bottom
-    WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
-
-    // front top left
-    0, 0, 0, // tip
-    -WING_LENGTH, TOP_RIDGE_LENGTH, 0, // left
-    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // bottom
-
-    // front back right
-    0, 0, 0, // tip
-    WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
-    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // bottom
-
-    // front back left
-    0, 0, 0, // tip
-    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // bottom
-    -WING_LENGTH, TOP_RIDGE_LENGTH, 0, // left
-
-    // --------rear----------
-    // rear top right
-    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // middle
-    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
-    WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
-
-    // rear top left
-    0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // middle
-    -WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
-    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
-
-    // rear back right
-    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
-    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // middle
-    WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
-
-    // rear back left
-    0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // middle
-    0, TOP_RIDGE_LENGTH + REAR_RIDGE_LENGTH, 0, // tip
-    -WING_LENGTH, TOP_RIDGE_LENGTH, 0, // right
-
-    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, // triangle 1 : begin
-    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, // triangle 1 : end
-    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, // triangle 2 : begin
-    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, // triangle 2 : end
-    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH,
-    PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH,
-
-    // Star
-    0, STAR_LONG, STAR_DISTANCE, // top
-    -STAR_LONG, -STAR_SHORT, STAR_DISTANCE, // bottom left
-    STAR_LONG, -STAR_SHORT, STAR_DISTANCE, // bottom right
-
-    0, -STAR_LONG, STAR_DISTANCE, // bottom
-    STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top right
-    -STAR_LONG, STAR_SHORT, STAR_DISTANCE, // top left
-
-    0, THRUST_END, THRUST_Z, // bottom
-    -THRUST_WIDTH, THRUST_START, THRUST_Z, // top left
-    THRUST_WIDTH, THRUST_START, THRUST_Z // top right
-  ])
-
-  gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
-  return {
-    ship: 24,
-    planet: 12 * 3,
-    star: 2 * 3,
-    thrust: 3
-  }
-}
-
 function setNormals (gl) {
   var normals = new Float32Array([
     // left column front
@@ -727,30 +756,6 @@ function setNormals (gl) {
     -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0
   ])
   gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW)
-}
-
-function makeXRotation (angleInRadians) {
-  var c = Math.cos(angleInRadians)
-  var s = Math.sin(angleInRadians)
-
-  return [
-    1, 0, 0, 0,
-    0, c, s, 0,
-    0, -s, c, 0,
-    0, 0, 0, 1
-  ]
-}
-
-function makeYRotation (angleInRadians) {
-  var c = Math.cos(angleInRadians)
-  var s = Math.sin(angleInRadians)
-
-  return [
-    c, 0, -s, 0,
-    0, 1, 0, 0,
-    s, 0, c, 0,
-    0, 0, 0, 1
-  ]
 }
 
 function makeZRotation (angleInRadians) {
