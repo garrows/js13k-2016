@@ -10,8 +10,8 @@ var data = {
   x: 0,
   y: 0,
   z: 0,
-  r: MATH_PI,
-  velX: 0,
+  r: MATH_PI / 2,
+  velX: -2.5,
   velY: 0,
   cameraDistance: 500,
   lightX: 1,
@@ -217,35 +217,21 @@ var lastTimestamp = 0
 
 // Generate stars
 var entities = []
-var planets = []
-var LAZY_MULTIPLIER_FIX_ME = 50
-var PLANET_COUNT = 100
-var CLOSEST_PLANET_DISTANCE = 800
+var LAZY_MULTIPLIER_FIX_ME = 30
 var MAX_PLANET_G_FORCE_REACH = 1000
 var STAR_COUNT = 400
-for (var i = 0; i < PLANET_COUNT + STAR_COUNT; i++) {
+for (var i = 0; i < STAR_COUNT; i++) {
   // TODO: DO math for this
   var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
   var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
-  if (i < PLANET_COUNT) {
-    if (x < CLOSEST_PLANET_DISTANCE && x > -CLOSEST_PLANET_DISTANCE && y < CLOSEST_PLANET_DISTANCE && y > -CLOSEST_PLANET_DISTANCE) {
-      // too close, try again
-      i--
-    } else {
-      planets.push([x, y])
-      entities.push([x, y, 0, 0, 'planet'])
-    }
-  } else {
-    entities.push([x, y, 0, 0, 'star'])
-  }
+  entities.push([ 'star', x, y ])
 }
-planets.push([data.x, data.y - 400])
-entities.push([data.x, data.y - 400, 0, 0, 'planet'])
+entities.push([ 'planet', data.x, data.y - 400 ])
+entities.push([ 'planet', data.x + 2000, data.y - 400 ])
 
 function playerDeath () {
-  console.log('you have died')
   data.velX = data.velY = data.x = data.y = 0
-  data.z = MATH_PI
+  data.r = MATH_PI / 2
 }
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
@@ -265,18 +251,22 @@ function drawScene (timestamp) {
   data.x -= data.velX
   data.y -= data.velY
 
-  planets.forEach(p => {
-    var tx = data.x - p[0]
-    var ty = data.y - p[1]
+  entities.forEach(e => {
+    var tx = data.x - e[1]
+    var ty = data.y - e[2]
     var dist = Math.sqrt(tx * tx + ty * ty)
-    if (dist > MAX_PLANET_G_FORCE_REACH) return
-    if (Math.abs(tx) < 100 && Math.abs(ty) < 100) {
-      playerDeath()
-      return
-    }
+    switch (e[0]) {
+      case 'planet':
+        if (dist > MAX_PLANET_G_FORCE_REACH) return
+        if (Math.abs(tx) < 100 && Math.abs(ty) < 100) {
+          playerDeath()
+          return
+        }
 
-    data.velX += (tx / dist) * 0.5 * dt / dist
-    data.velY += (ty / dist) * 0.5 * dt / dist
+        data.velX += (tx / dist) * 0.5 * dt / dist
+        data.velY += (ty / dist) * 0.5 * dt / dist
+        break
+    }
   })
 
   // Compute the matrices
@@ -292,7 +282,9 @@ function drawScene (timestamp) {
   // set the light direction.
   gl.uniform3fv(reverseLightDirectionLocation, normalize([ data.lightX, data.lightY, data.lightZ ]))
 
-  function drawEntity (x, y, z, angle, type) {
+  function drawEntity (type, x, y, z, angle) {
+    z = z || 0
+    angle = angle || 0
     var translationMatrix = makeTranslation(x, y, z)
     var rotationMatrix = makeZRotation(angle)
 
@@ -336,9 +328,9 @@ function drawScene (timestamp) {
     }
   }
 
-  drawEntity(data.x, data.y, data.z, data.r, 'ship')
+  drawEntity('ship', data.x, data.y, data.z, data.r)
   if (keyUp) {
-    drawEntity(data.x, data.y, data.z, data.r, 'thrust')
+    drawEntity('thrust', data.x, data.y, data.z, data.r)
     playThrustSound()
   } else {
     stopThrustSound()
