@@ -230,8 +230,9 @@ entities.push([ 'planet', data.x, data.y - 400 ])
 entities.push([ 'planet', data.x + 2000, data.y - 400 ])
 
 function playerDeath () {
-  data.velX = data.velY = data.x = data.y = 0
+  data.velY = data.x = data.y = 0
   data.r = MATH_PI / 2
+  data.velX = -2.5
 }
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
