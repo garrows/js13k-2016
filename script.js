@@ -218,7 +218,7 @@ var lastTimestamp = 0
 // Generate stars
 var entities = []
 var planets = []
-var LAZY_MULTIPLIER_FIX_ME = 10
+var LAZY_MULTIPLIER_FIX_ME = 50
 var PLANET_COUNT = 100
 var CLOSEST_PLANET_DISTANCE = 800
 var MAX_PLANET_G_FORCE_REACH = 1000
@@ -259,7 +259,7 @@ function drawScene (timestamp) {
   // Move around the screen
   if (keyRight) data.r -= 0.005 * dt
   if (keyLeft) data.r += 0.005 * dt
-  if (keyUp) thrust = 0.0005 * dt
+  if (keyUp) thrust = 0.0003 * dt
   data.velX += Math.cos(data.r + MATH_PI / 2) * thrust * dt
   data.velY += Math.sin(data.r + MATH_PI / 2) * thrust * dt
   data.x -= data.velX
