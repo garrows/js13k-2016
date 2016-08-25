@@ -217,26 +217,36 @@ var lastTimestamp = 0
 
 // Generate stars
 var entities = []
+var planets = []
 var LAZY_MULTIPLIER_FIX_ME = 30
 var PLANET_COUNT = 500
+var CLOSEST_PLANET_DISTANCE = 1000
+var MAX_PLANET_G_FORCE_REACH = 1000
 var STAR_COUNT = 1500
 for (var i = 0; i < PLANET_COUNT + STAR_COUNT; i++) {
   // TODO: DO math for this
   var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
   var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
   if (i < PLANET_COUNT) {
-    if (x < 300 && x > -300 && y < 300 && y > -300) {
+    if (x < CLOSEST_PLANET_DISTANCE && x > -CLOSEST_PLANET_DISTANCE && y < CLOSEST_PLANET_DISTANCE && y > -CLOSEST_PLANET_DISTANCE) {
       // too close, try again
       i--
     } else {
+      planets.push([x, y])
       entities.push([x, y, 0, 0, 'planet'])
     }
   } else {
     entities.push([x, y, 0, 0, 'star'])
   }
 }
-entities.push([data.x, data.y - 300, 0, 0, 'planet'])
+planets.push([data.x, data.y - 400])
+entities.push([data.x, data.y - 400, 0, 0, 'planet'])
 
+function playerDeath () {
+  console.log('you have died')
+  data.velX = data.velY = data.x = data.y = 0
+  data.z = MATH_PI
+}
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
   var thrust = 0.0
@@ -249,11 +259,25 @@ function drawScene (timestamp) {
   // Move around the screen
   if (keyRight) data.r -= 0.005 * dt
   if (keyLeft) data.r += 0.005 * dt
-  if (keyUp) thrust = 0.0001 * dt
+  if (keyUp) thrust = 0.0005 * dt
   data.velX += Math.cos(data.r + MATH_PI / 2) * thrust * dt
   data.velY += Math.sin(data.r + MATH_PI / 2) * thrust * dt
   data.x -= data.velX
   data.y -= data.velY
+
+  planets.forEach(p => {
+    var tx = data.x - p[0]
+    var ty = data.y - p[1]
+    var dist = Math.sqrt(tx * tx + ty * ty)
+    if (dist > MAX_PLANET_G_FORCE_REACH) return
+    if (Math.abs(tx) < 100 && Math.abs(ty) < 100) {
+      playerDeath()
+      return
+    }
+
+    data.velX += (tx / dist) * 0.5 * dt / dist
+    data.velY += (ty / dist) * 0.5 * dt / dist
+  })
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
