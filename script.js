@@ -81,6 +81,25 @@ function playThrustSound () {
   setTimeout(stopThrustSound, 3000)
 }
 
+function playMarkerSound () {
+  var thrustOsc1 = context.createOscillator()
+  var thrustOsc2 = context.createOscillator()
+
+  thrustOsc1.frequency.value = 500
+  thrustOsc2.frequency.value = 650
+  thrustOsc2.type = thrustOsc1.type = 'square'
+
+  thrustOsc1.connect(masterVolume)
+  thrustOsc2.connect(masterVolume)
+
+  masterVolume.connect(context.destination)
+
+  thrustOsc1.start(context.currentTime)
+  thrustOsc2.start(context.currentTime + 0.1)
+  thrustOsc1.stop(context.currentTime + 0.3)
+  thrustOsc2.stop(context.currentTime + 0.3)
+}
+
 keyboard.keyDown = function (note, frequency) {
   console.log('Note', note, 'has been pressed. Its frequency is', frequency)
   var osc = context.createOscillator()
@@ -227,7 +246,15 @@ for (var i = 0; i < STAR_COUNT; i++) {
   entities.push([ 'star', x, y ])
 }
 entities.push([ 'planet', data.x, data.y - 400 ])
-entities.push([ 'planet', data.x + 2000, data.y - 400 ])
+entities.push([ 'planet', data.x + 1500, data.y - 400 ])
+
+var j = 300
+entities.push([ 'marker', data.x + 400, data.y - (j += 60) ])
+entities.push([ 'marker', data.x + 600, data.y - (j += 60) ])
+entities.push([ 'marker', data.x + 800, data.y - (j += 60) ])
+entities.push([ 'marker', data.x + 1000, data.y - (j += 60) ])
+entities.push([ 'marker', data.x + 1200, data.y - (j += 60) ])
+entities.push([ 'marker', data.x + 1400, data.y - (j += 60) ])
 
 function playerDeath () {
   data.velY = data.x = data.y = 0
@@ -252,7 +279,7 @@ function drawScene (timestamp) {
   data.x -= data.velX
   data.y -= data.velY
 
-  entities.forEach(e => {
+  entities.forEach((e, idx) => {
     var tx = data.x - e[1]
     var ty = data.y - e[2]
     var dist = Math.sqrt(tx * tx + ty * ty)
@@ -266,6 +293,14 @@ function drawScene (timestamp) {
 
         data.velX += (tx / dist) * 0.5 * dt / dist
         data.velY += (ty / dist) * 0.5 * dt / dist
+        break
+      case 'marker':
+        if (dist < 10) {
+          playMarkerSound()
+          // TODO: Check if this is right
+          entities.splice(idx, 1)
+          return
+        }
         break
     }
   })
@@ -315,7 +350,7 @@ function drawScene (timestamp) {
         gl.drawArrays(gl.TRIANGLES, BUFFER_PLANET_START, BUFFER_PLANET_LENGTH)
         break
       case 'marker':
-        gl.uniform4fv(colorLocation, [ 1, 1, 1, 1 ])
+        gl.uniform4fv(colorLocation, [ 1, 1, 0, 1 ])
         gl.drawArrays(gl.TRIANGLES, BUFFER_MARKER_START, BUFFER_MARKER_LENGTH)
         break
       case 'star':
@@ -374,7 +409,7 @@ function setGeometry (gl) {
   var STAR_SHORT = 10
   var STAR_DISTANCE = -2000
 
-  var MARKER_SIZE = 5
+  var MARKER_SIZE = 10
 
   var positions = new Float32Array([
 
