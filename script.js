@@ -236,9 +236,9 @@ var lastTimestamp = 0
 
 // Generate stars
 var entities = []
-var LAZY_MULTIPLIER_FIX_ME = 30
+var LAZY_MULTIPLIER_FIX_ME = 8
 var MAX_PLANET_G_FORCE_REACH = 1000
-var STAR_COUNT = 400
+var STAR_COUNT = 150
 for (var i = 0; i < STAR_COUNT; i++) {
   // TODO: DO math for this
   var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
