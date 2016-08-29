@@ -6,11 +6,34 @@ var WINDOW_INNERWIDTH = window.innerWidth
 var MATH_RANDOM = Math.random
 var MATH_PI = Math.PI
 
+var LOST_DEATH_DISTANCE = 10000
+var LAZY_MULTIPLIER_FIX_ME = 8
+var MAX_PLANET_G_FORCE_REACH = 1000
+var STAR_COUNT = 150
+var MARKER_COLLISTION_DIST = 30
+var POWER_DISSIPATION = 0.1
+var POWER_RECHARGE = 2
+var THRUST_MULTIPLIER = 0.0003
+var ROTATION_MULTIPLIER = 0.005
+var POWER_MAX = 100
+
+var BUFFER_SHIP_START = 0
+var BUFFER_SHIP_LENGTH = 24
+var BUFFER_PLANET_START = BUFFER_SHIP_START + BUFFER_SHIP_LENGTH
+var BUFFER_PLANET_LENGTH = 12 * 3
+var BUFFER_STAR_START = BUFFER_PLANET_START + BUFFER_PLANET_LENGTH
+var BUFFER_STAR_LENGTH = 2 * 3
+var BUFFER_THRUST_START = BUFFER_STAR_START + BUFFER_STAR_LENGTH
+var BUFFER_THRUST_LENGTH = 3
+var BUFFER_MARKER_START = BUFFER_THRUST_START + BUFFER_THRUST_LENGTH
+var BUFFER_MARKER_LENGTH = 3
+
 var data = {
   x: 0,
   y: 0,
   z: 0,
   r: MATH_PI / 2,
+  power: POWER_MAX,
   velX: -2.5,
   velY: 0,
   cameraDistance: 500,
@@ -31,7 +54,7 @@ var keyLeft = false
 var keyRight = false
 var keyUp = false
 var gui = new dat.GUI()
-gui.close()
+// gui.close()
 var canvas = document.getElementById('glcanvas')
 canvas.width = WINDOW_INNERWIDTH
 canvas.height = WINDOW_INNERHEIGHT
@@ -137,6 +160,7 @@ gui.add(data, 'x', -500, 500).listen()
 gui.add(data, 'y', -2000, 2000).listen()
 gui.add(data, 'z', -500, 500)
 gui.add(data, 'r', 0, MATH_PI * 2).listen()
+gui.add(data, 'power', 0, 100).listen()
 gui.add(data, 'velX', 0, 20).listen()
 gui.add(data, 'velY', 0, 20).listen()
 gui.add(data, 'lightX', 0, 1)
@@ -236,9 +260,6 @@ var lastTimestamp = 0
 
 // Generate stars
 var entities = []
-var LAZY_MULTIPLIER_FIX_ME = 8
-var MAX_PLANET_G_FORCE_REACH = 1000
-var STAR_COUNT = 150
 for (var i = 0; i < STAR_COUNT; i++) {
   // TODO: DO math for this
   var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
@@ -248,18 +269,19 @@ for (var i = 0; i < STAR_COUNT; i++) {
 entities.push([ 'planet', data.x, data.y - 400 ])
 entities.push([ 'planet', data.x + 1500, data.y - 400 ])
 
-var j = 300
-entities.push([ 'marker', data.x + 400, data.y - (j += 60) ])
-entities.push([ 'marker', data.x + 600, data.y - (j += 60) ])
-entities.push([ 'marker', data.x + 800, data.y - (j += 60) ])
-entities.push([ 'marker', data.x + 1000, data.y - (j += 60) ])
-entities.push([ 'marker', data.x + 1200, data.y - (j += 60) ])
-entities.push([ 'marker', data.x + 1400, data.y - (j += 60) ])
+var j = 170
+entities.push([ 'marker', data.x + 400, data.y - (j += 80) ])
+entities.push([ 'marker', data.x + 600, data.y - (j += 80) ])
+entities.push([ 'marker', data.x + 800, data.y - (j += 80) ])
+entities.push([ 'marker', data.x + 1000, data.y - (j += 80) ])
+entities.push([ 'marker', data.x + 1200, data.y - (j += 80) ])
+entities.push([ 'marker', data.x + 1400, data.y - (j += 80) ])
 
 function playerDeath () {
   data.velY = data.x = data.y = 0
   data.r = MATH_PI / 2
   data.velX = -2.5
+  data.power = POWER_MAX
 }
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
@@ -271,21 +293,27 @@ function drawScene (timestamp) {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
   // Move around the screen
-  if (keyRight) data.r -= 0.005 * dt
-  if (keyLeft) data.r += 0.005 * dt
-  if (keyUp) thrust = 0.0003 * dt
+  if (keyRight) data.r -= ROTATION_MULTIPLIER * dt
+  if (keyLeft) data.r += ROTATION_MULTIPLIER * dt
+  if (keyUp && data.power > 0) {
+    thrust = THRUST_MULTIPLIER * dt
+    data.power -= POWER_DISSIPATION * dt
+  }
   data.velX += Math.cos(data.r + MATH_PI / 2) * thrust * dt
   data.velY += Math.sin(data.r + MATH_PI / 2) * thrust * dt
   data.x -= data.velX
   data.y -= data.velY
 
+  var largestDistanceFromPlanet = 0
   entities.forEach((e, idx) => {
     var tx = data.x - e[1]
     var ty = data.y - e[2]
     var dist = Math.sqrt(tx * tx + ty * ty)
+    largestDistanceFromPlanet = largestDistanceFromPlanet > dist ? largestDistanceFromPlanet : dist
     switch (e[0]) {
       case 'planet':
         if (dist > MAX_PLANET_G_FORCE_REACH) return
+        data.power = data.power > POWER_MAX ? POWER_MAX : data.power +  dt / (dist / POWER_RECHARGE)
         if (Math.abs(tx) < 100 && Math.abs(ty) < 100) {
           playerDeath()
           return
@@ -295,7 +323,7 @@ function drawScene (timestamp) {
         data.velY += (ty / dist) * 0.5 * dt / dist
         break
       case 'marker':
-        if (dist < 10) {
+        if (dist < MARKER_COLLISTION_DIST) {
           playMarkerSound()
           // TODO: Check if this is right
           entities.splice(idx, 1)
@@ -304,6 +332,7 @@ function drawScene (timestamp) {
         break
     }
   })
+  if (largestDistanceFromPlanet > LOST_DEATH_DISTANCE) playerDeath()
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
@@ -365,7 +394,7 @@ function drawScene (timestamp) {
   }
 
   drawEntity('ship', data.x, data.y, data.z, data.r)
-  if (keyUp) {
+  if (thrust > 0) {
     drawEntity('thrust', data.x, data.y, data.z, data.r)
     playThrustSound()
   } else {
@@ -378,17 +407,6 @@ function drawScene (timestamp) {
 }
 
 requestAnimationFrame(drawScene)
-
-var BUFFER_SHIP_START = 0
-var BUFFER_SHIP_LENGTH = 24
-var BUFFER_PLANET_START = BUFFER_SHIP_START + BUFFER_SHIP_LENGTH
-var BUFFER_PLANET_LENGTH = 12 * 3
-var BUFFER_STAR_START = BUFFER_PLANET_START + BUFFER_PLANET_LENGTH
-var BUFFER_STAR_LENGTH = 2 * 3
-var BUFFER_THRUST_START = BUFFER_STAR_START + BUFFER_STAR_LENGTH
-var BUFFER_THRUST_LENGTH = 3
-var BUFFER_MARKER_START = BUFFER_THRUST_START + BUFFER_THRUST_LENGTH
-var BUFFER_MARKER_LENGTH = 3
 
 // Make the ship
 function setGeometry (gl) {
