@@ -1,4 +1,4 @@
-/* global dat, requestAnimationFrame, alert, QwertyHancock, AudioContext */
+/* global requestAnimationFrame, alert, AudioContext */
 'use strict'
 
 var WINDOW_INNERHEIGHT = window.innerHeight
@@ -28,33 +28,25 @@ var BUFFER_THRUST_LENGTH = 3
 var BUFFER_MARKER_START = BUFFER_THRUST_START + BUFFER_THRUST_LENGTH
 var BUFFER_MARKER_LENGTH = 3
 
-var data = {
-  x: 0,
-  y: 0,
-  z: 0,
-  r: MATH_PI / 2,
-  power: POWER_MAX,
-  velX: -2.5,
-  velY: 0,
-  cameraDistance: 500,
-  lightX: 1,
-  lightY: 1,
-  lightZ: 1,
-  animateSpeed: 0.0,
-  fov: 1.0471975511965976,
-  zNear: 1,
-  zFar: 5000,
-  fps: 0,
-  oscillatorType1: 'sawtooth',
-  oscillatorType2: 'triangle',
-  oscillatorDetune1: -10,
-  oscillatorDetune2: 10
-}
+var shipX = 0
+var shipY = 0
+var shipZ = 0
+var shipR = MATH_PI / 2
+var shipPower = POWER_MAX
+var shipVelX = -2.5
+var shipVelY = 0
+var shipCameraDistance = 500
+var shipLightX = 1
+var shipLightY = 1
+var shipLightZ = 1
+var shipFov = 1.0471975511965976
+var shipZNear = 1
+var shipZFar = 5000
+
 var keyLeft = false
 var keyRight = false
 var keyUp = false
-var gui = new dat.GUI()
-// gui.close()
+
 var canvas = document.getElementById('glcanvas')
 canvas.width = WINDOW_INNERWIDTH
 canvas.height = WINDOW_INNERHEIGHT
@@ -63,13 +55,6 @@ var gl = canvas.getContext('webgl')
 // Audio stuff
 var context = new AudioContext()
 var masterVolume = context.createGain()
-var oscillators = {}
-var keyboard = new QwertyHancock({
-  id: 'keyboard',
-  width: WINDOW_INNERWIDTH,
-  height: 0,
-  octaves: 2
-})
 masterVolume.gain.value = 0.05
 masterVolume.connect(context.destination)
 
@@ -123,60 +108,7 @@ function playMarkerSound () {
   thrustOsc2.stop(context.currentTime + 0.3)
 }
 
-keyboard.keyDown = function (note, frequency) {
-  console.log('Note', note, 'has been pressed. Its frequency is', frequency)
-  var osc = context.createOscillator()
-  var osc2 = context.createOscillator()
-
-  osc.frequency.value = frequency
-  osc.type = data.oscillatorType1
-
-  osc2.frequency.value = frequency
-  osc2.type = data.oscillatorType2
-
-  osc.detune.value = data.oscillatorDetune1
-  osc2.detune.value = data.oscillatorDetune2
-
-  osc.connect(masterVolume)
-  osc2.connect(masterVolume)
-
-  masterVolume.connect(context.destination)
-
-  oscillators[frequency] = [osc, osc2]
-
-  osc.start(context.currentTime)
-  osc2.start(context.currentTime)
-}
-
-keyboard.keyUp = function (note, frequency) {
-  oscillators[frequency].forEach(function (oscillator) {
-    oscillator.stop(context.currentTime)
-  })
-}
-
-gui.remember(data)
-gui.add(data, 'animateSpeed', 0, 1)
-gui.add(data, 'x', -500, 500).listen()
-gui.add(data, 'y', -2000, 2000).listen()
-gui.add(data, 'z', -500, 500)
-gui.add(data, 'r', 0, MATH_PI * 2).listen()
-gui.add(data, 'power', 0, 100).listen()
-gui.add(data, 'velX', 0, 20).listen()
-gui.add(data, 'velY', 0, 20).listen()
-gui.add(data, 'lightX', 0, 1)
-gui.add(data, 'lightY', 0, 1)
-gui.add(data, 'lightZ', 0, 1)
-gui.add(data, 'cameraDistance', 0, 2000)
-gui.add(data, 'fov', 0, MATH_PI)
-gui.add(data, 'zNear', 1, 1000)
-gui.add(data, 'zFar', 0, 5000)
-gui.add(data, 'oscillatorType1', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
-gui.add(data, 'oscillatorType2', { sawtooth: 'sawtooth', triangle: 'triangle', sine: 'sine', square: 'square' })
-gui.add(data, 'oscillatorDetune1', -100, 100)
-gui.add(data, 'oscillatorDetune2', -100, 100)
-gui.add(data, 'fps').listen()
-
-document.onkeydown = document.onkeyup = (e) => {
+document.onkeydown = document.onkeyup = function (e) {
   switch (e.keyCode) {
     case 37:
       keyLeft = e.type === 'keydown'
@@ -192,10 +124,10 @@ document.onkeydown = document.onkeyup = (e) => {
   }
 }
 
-var touchEvent = (e) => {
+var touchEvent = function (e) {
   keyLeft = keyRight = keyUp = false
-  keyLeft = Array.from(e.touches).some(t => t.clientX < WINDOW_INNERWIDTH / 2)
-  keyRight = Array.from(e.touches).some(t => t.clientX > WINDOW_INNERWIDTH / 2)
+  keyLeft = Array.from(e.touches).some(function (t) { t.clientX < WINDOW_INNERWIDTH / 2 })
+  keyRight = Array.from(e.touches).some(function (t) { t.clientX > WINDOW_INNERWIDTH / 2 })
   keyUp = keyLeft && keyRight
 }
 document.addEventListener('touchstart', touchEvent, false)
@@ -266,61 +198,60 @@ for (var i = 0; i < STAR_COUNT; i++) {
   var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
   entities.push([ 'star', x, y ])
 }
-entities.push([ 'planet', data.x, data.y - 400 ])
-entities.push([ 'planet', data.x + 1500, data.y - 400 ])
+entities.push([ 'planet', shipX, shipY - 400 ])
+entities.push([ 'planet', shipX + 1500, shipY - 400 ])
 
 var j = 170
-entities.push([ 'marker', data.x + 400, data.y - (j += 80) ])
-entities.push([ 'marker', data.x + 600, data.y - (j += 80) ])
-entities.push([ 'marker', data.x + 800, data.y - (j += 80) ])
-entities.push([ 'marker', data.x + 1000, data.y - (j += 80) ])
-entities.push([ 'marker', data.x + 1200, data.y - (j += 80) ])
-entities.push([ 'marker', data.x + 1400, data.y - (j += 80) ])
+entities.push([ 'marker', shipX + 400, shipY - (j += 80) ])
+entities.push([ 'marker', shipX + 600, shipY - (j += 80) ])
+entities.push([ 'marker', shipX + 800, shipY - (j += 80) ])
+entities.push([ 'marker', shipX + 1000, shipY - (j += 80) ])
+entities.push([ 'marker', shipX + 1200, shipY - (j += 80) ])
+entities.push([ 'marker', shipX + 1400, shipY - (j += 80) ])
 
 function playerDeath () {
-  data.velY = data.x = data.y = 0
-  data.r = MATH_PI / 2
-  data.velX = -2.5
-  data.power = POWER_MAX
+  shipVelY = shipX = shipY = 0
+  shipR = MATH_PI / 2
+  shipVelX = -2.5
+  shipPower = POWER_MAX
 }
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
   var thrust = 0.0
   lastTimestamp = timestamp
-  data.fps = 1000 / dt
 
   // Clear the canvas AND the depth buffer.
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
   // Move around the screen
-  if (keyRight) data.r -= ROTATION_MULTIPLIER * dt
-  if (keyLeft) data.r += ROTATION_MULTIPLIER * dt
-  if (keyUp && data.power > 0) {
+  if (keyRight) shipR -= ROTATION_MULTIPLIER * dt
+  if (keyLeft) shipR += ROTATION_MULTIPLIER * dt
+  if (keyUp && shipPower > 0) {
     thrust = THRUST_MULTIPLIER * dt
-    data.power -= POWER_DISSIPATION * dt
+    shipPower -= POWER_DISSIPATION * dt
   }
-  data.velX += Math.cos(data.r + MATH_PI / 2) * thrust * dt
-  data.velY += Math.sin(data.r + MATH_PI / 2) * thrust * dt
-  data.x -= data.velX
-  data.y -= data.velY
+  shipVelX += Math.cos(shipR + MATH_PI / 2) * thrust * dt
+  shipVelY += Math.sin(shipR + MATH_PI / 2) * thrust * dt
+  shipX -= shipVelX
+  shipY -= shipVelY
 
   var largestDistanceFromPlanet = 0
-  entities.forEach((e, idx) => {
-    var tx = data.x - e[1]
-    var ty = data.y - e[2]
+  entities.forEach(function (e, idx) {
+    var tx = shipX - e[1]
+    var ty = shipY - e[2]
     var dist = Math.sqrt(tx * tx + ty * ty)
     largestDistanceFromPlanet = largestDistanceFromPlanet > dist ? largestDistanceFromPlanet : dist
     switch (e[0]) {
       case 'planet':
         if (dist > MAX_PLANET_G_FORCE_REACH) return
-        data.power = data.power > POWER_MAX ? POWER_MAX : data.power +  dt / (dist / POWER_RECHARGE)
+        shipPower = shipPower > POWER_MAX ? POWER_MAX : shipPower + dt / (dist / POWER_RECHARGE)
         if (Math.abs(tx) < 100 && Math.abs(ty) < 100) {
           playerDeath()
           return
         }
 
-        data.velX += (tx / dist) * 0.5 * dt / dist
-        data.velY += (ty / dist) * 0.5 * dt / dist
+        shipVelX += (tx / dist) * 0.5 * dt / dist
+        shipVelY += (ty / dist) * 0.5 * dt / dist
         break
       case 'marker':
         if (dist < MARKER_COLLISTION_DIST) {
@@ -336,16 +267,16 @@ function drawScene (timestamp) {
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
-  var projectionMatrix = makePerspective(data.fov, aspect, data.zNear, data.zFar)
+  var projectionMatrix = makePerspective(shipFov, aspect, shipZNear, shipZFar)
 
   // Use matrix math to compute a position on the circle.
-  var cameraMatrix = makeTranslation(data.x, data.y, data.z + data.cameraDistance)
+  var cameraMatrix = makeTranslation(shipX, shipY, shipZ + shipCameraDistance)
 
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
 
   // set the light direction.
-  gl.uniform3fv(reverseLightDirectionLocation, normalize([ data.lightX, data.lightY, data.lightZ ]))
+  gl.uniform3fv(reverseLightDirectionLocation, normalize([ shipLightX, shipLightY, shipLightZ ]))
 
   function drawEntity (type, x, y, z, angle) {
     z = z || 0
@@ -393,15 +324,15 @@ function drawScene (timestamp) {
     }
   }
 
-  drawEntity('ship', data.x, data.y, data.z, data.r)
+  drawEntity('ship', shipX, shipY, shipZ, shipR)
   if (thrust > 0) {
-    drawEntity('thrust', data.x, data.y, data.z, data.r)
+    drawEntity('thrust', shipX, shipY, shipZ, shipR)
     playThrustSound()
   } else {
     stopThrustSound()
   }
 
-  entities.forEach(e => drawEntity.apply(this, e))
+  entities.forEach(function (e) { drawEntity.apply(this, e) })
 
   requestAnimationFrame(drawScene)
 }
