@@ -17,6 +17,14 @@ var THRUST_MULTIPLIER = 0.0003
 var ROTATION_MULTIPLIER = 0.005
 var POWER_MAX = 100
 
+var FOV = 1.0471975511965976
+var Z_NEAR = 1
+var Z_FAR = 5000
+var LIGHT_X = 1
+var LIGHT_Y = 1
+var LIGHT_Z = 1
+var CAMERA_DISTANCE = 500
+
 var BUFFER_SHIP_START = 0
 var BUFFER_SHIP_LENGTH = 24
 var BUFFER_PLANET_START = BUFFER_SHIP_START + BUFFER_SHIP_LENGTH
@@ -31,21 +39,45 @@ var BUFFER_MARKER_LENGTH = 3
 var shipX = 0
 var shipY = 0
 var shipZ = 0
-var shipR = MATH_PI / 2
-var shipPower = POWER_MAX
-var shipVelX = -2.5
+var shipR = 0
+var shipPower = 0
+var shipVelX = 0
 var shipVelY = 0
-var shipCameraDistance = 500
-var shipLightX = 1
-var shipLightY = 1
-var shipLightZ = 1
-var shipFov = 1.0471975511965976
-var shipZNear = 1
-var shipZFar = 5000
+
+var lastTimestamp = 0
 
 var keyLeft = false
 var keyRight = false
 var keyUp = false
+
+// Generate stars
+var entities = []
+
+function playerDeath () {
+  shipVelY = shipX = shipY = 0
+  shipR = MATH_PI / 2
+  shipVelX = -2.5
+  shipPower = POWER_MAX
+
+  entities = []
+  for (var i = 0; i < STAR_COUNT; i++) {
+    // TODO: DO math for this
+    var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
+    var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
+    entities.push([ 'star', x, y ])
+  }
+
+  entities.push([ 'planet', shipX, shipY - 400 ])
+  entities.push([ 'planet', shipX + 1500, shipY - 400 ])
+
+  i = 170
+  entities.push([ 'marker', shipX + 400, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 600, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 800, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 1000, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 1200, shipY - (i += 80) ])
+}
+playerDeath()
 
 var canvas = document.getElementById('glcanvas')
 canvas.width = WINDOW_INNERWIDTH
@@ -119,8 +151,6 @@ document.onkeydown = document.onkeyup = function (e) {
     case 38:
       keyUp = e.type === 'keydown'
       break
-  // default:
-  //   console.log(e.code, e.keyCode)
   }
 }
 
@@ -187,34 +217,6 @@ gl.vertexAttribPointer(normalLocation, 3, gl.FLOAT, false, 0, 0)
 // Set normals.
 setNormals(gl)
 
-// Draw the scene.
-var lastTimestamp = 0
-
-// Generate stars
-var entities = []
-for (var i = 0; i < STAR_COUNT; i++) {
-  // TODO: DO math for this
-  var x = MATH_RANDOM() * WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERWIDTH * LAZY_MULTIPLIER_FIX_ME / 2
-  var y = MATH_RANDOM() * WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME - WINDOW_INNERHEIGHT * LAZY_MULTIPLIER_FIX_ME / 2
-  entities.push([ 'star', x, y ])
-}
-entities.push([ 'planet', shipX, shipY - 400 ])
-entities.push([ 'planet', shipX + 1500, shipY - 400 ])
-
-var j = 170
-entities.push([ 'marker', shipX + 400, shipY - (j += 80) ])
-entities.push([ 'marker', shipX + 600, shipY - (j += 80) ])
-entities.push([ 'marker', shipX + 800, shipY - (j += 80) ])
-entities.push([ 'marker', shipX + 1000, shipY - (j += 80) ])
-entities.push([ 'marker', shipX + 1200, shipY - (j += 80) ])
-entities.push([ 'marker', shipX + 1400, shipY - (j += 80) ])
-
-function playerDeath () {
-  shipVelY = shipX = shipY = 0
-  shipR = MATH_PI / 2
-  shipVelX = -2.5
-  shipPower = POWER_MAX
-}
 function drawScene (timestamp) {
   var dt = timestamp - lastTimestamp
   var thrust = 0.0
@@ -267,16 +269,16 @@ function drawScene (timestamp) {
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
-  var projectionMatrix = makePerspective(shipFov, aspect, shipZNear, shipZFar)
+  var projectionMatrix = makePerspective(FOV, aspect, Z_NEAR, Z_FAR)
 
   // Use matrix math to compute a position on the circle.
-  var cameraMatrix = makeTranslation(shipX, shipY, shipZ + shipCameraDistance)
+  var cameraMatrix = makeTranslation(shipX, shipY, shipZ + CAMERA_DISTANCE)
 
   // Make a view matrix from the camera matrix.
   var viewMatrix = makeInverse(cameraMatrix)
 
   // set the light direction.
-  gl.uniform3fv(reverseLightDirectionLocation, normalize([ shipLightX, shipLightY, shipLightZ ]))
+  gl.uniform3fv(reverseLightDirectionLocation, normalize([ LIGHT_X, LIGHT_Y, LIGHT_Z ]))
 
   function drawEntity (type, x, y, z, angle) {
     z = z || 0
