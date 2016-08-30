@@ -76,7 +76,7 @@ function playerDeath () {
   entities.push([ 'marker', shipX + 800, shipY - (i += 80) ])
   entities.push([ 'marker', shipX + 1000, shipY - (i += 80) ])
   entities.push([ 'marker', shipX + 1200, shipY - (i += 80) ])
-  console.log('you died')
+  console.log('you died!!!')
 }
 playerDeath()
 
