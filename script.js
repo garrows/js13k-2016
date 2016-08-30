@@ -17,13 +17,14 @@ var THRUST_MULTIPLIER = 0.0003
 var ROTATION_MULTIPLIER = 0.005
 var POWER_MAX = 100
 
-var FOV = 1.0471975511965976
+var FOV = 1
 var Z_NEAR = 1
 var Z_FAR = 5000
 var LIGHT_X = 1
 var LIGHT_Y = 1
 var LIGHT_Z = 1
 var CAMERA_DISTANCE = 500
+var POWER_BAR_WIDTH = 30
 
 var BUFFER_SHIP_START = 0
 var BUFFER_SHIP_LENGTH = 24
@@ -35,6 +36,10 @@ var BUFFER_THRUST_START = BUFFER_STAR_START + BUFFER_STAR_LENGTH
 var BUFFER_THRUST_LENGTH = 3
 var BUFFER_MARKER_START = BUFFER_THRUST_START + BUFFER_THRUST_LENGTH
 var BUFFER_MARKER_LENGTH = 3
+var BUFFER_POWER_START = BUFFER_MARKER_START + BUFFER_MARKER_LENGTH
+var BUFFER_POWER_LENGTH = 6
+var BUFFER_POWER2_START = BUFFER_POWER_START + BUFFER_POWER_LENGTH
+var BUFFER_POWER2_LENGTH = 6
 
 var shipX = 0
 var shipY = 0
@@ -164,6 +169,8 @@ document.addEventListener('touchstart', touchEvent, false)
 document.addEventListener('touchmove', touchEvent, false)
 document.addEventListener('touchend', touchEvent, false)
 
+window.onresize = playerDeath
+
 var program = gl.createProgram()
 var newShader = function (id, type) {
   var shader = gl.createShader(type)
@@ -280,16 +287,19 @@ function drawScene (timestamp) {
   // set the light direction.
   gl.uniform3fv(reverseLightDirectionLocation, normalize([ LIGHT_X, LIGHT_Y, LIGHT_Z ]))
 
-  function drawEntity (type, x, y, z, angle) {
+  function drawEntity (type, x, y, z, angle, scaleX) {
     z = z || 0
     angle = angle || 0
+    scaleX = scaleX || 1
     var translationMatrix = makeTranslation(x, y, z)
     var rotationMatrix = makeZRotation(angle)
+    var scaleMatrix = makeScale(scaleX, 1, 1)
 
     // Multiply the matrices.
     var matrix = translationMatrix
     matrix = matrixMultiply(translationMatrix, viewMatrix)
     matrix = matrixMultiply(matrix, rotationMatrix)
+    matrix = matrixMultiply(matrix, scaleMatrix)
 
     var worldViewProjectionMatrix = matrixMultiply(matrix, projectionMatrix)
 
@@ -321,11 +331,16 @@ function drawScene (timestamp) {
         gl.uniform4fv(colorLocation, [ r, 0, b, 1 ]) // whiteish
         gl.drawArrays(gl.TRIANGLES, BUFFER_STAR_START, BUFFER_STAR_LENGTH)
         break
+      case 'power':
+        gl.uniform4fv(colorLocation, [ 1 - shipPower / POWER_MAX, shipPower / POWER_MAX, 0, 1 ])
+        gl.drawArrays(gl.TRIANGLES, BUFFER_POWER2_START, BUFFER_POWER2_LENGTH)
+        break
       default:
         throw new Error('up')
     }
   }
 
+  drawEntity('power', shipX, shipY - 0.5, shipZ + CAMERA_DISTANCE - 1, 0, shipPower / POWER_MAX * POWER_BAR_WIDTH)
   drawEntity('ship', shipX, shipY, shipZ, shipR)
   if (thrust > 0) {
     drawEntity('thrust', shipX, shipY, shipZ, shipR)
@@ -361,6 +376,7 @@ function setGeometry (gl) {
   var STAR_DISTANCE = -2000
 
   var MARKER_SIZE = 10
+  var HEALTH_SIZE = 0.01
 
   var positions = new Float32Array([
 
@@ -459,7 +475,25 @@ function setGeometry (gl) {
     // Marker
     0, -MARKER_SIZE, 0, // top
     MARKER_SIZE, MARKER_SIZE, 0, // right
-    -MARKER_SIZE, MARKER_SIZE, 0 // left
+    -MARKER_SIZE, MARKER_SIZE, 0, // left
+
+    // Power Hud - bad color???
+    -HEALTH_SIZE, HEALTH_SIZE, -10, // top left
+    -HEALTH_SIZE, -HEALTH_SIZE, 10, // bottom left
+    HEALTH_SIZE, -HEALTH_SIZE, 10, // bottom right
+
+    HEALTH_SIZE, HEALTH_SIZE, 10, // top right
+    -HEALTH_SIZE, HEALTH_SIZE, -10, // top left
+    HEALTH_SIZE, -HEALTH_SIZE, -10, // bottom right
+
+    // Power Hud 2 - correct color
+    -HEALTH_SIZE, HEALTH_SIZE, 0, // top left
+    -HEALTH_SIZE, -HEALTH_SIZE, 0, // bottom left
+    HEALTH_SIZE, -HEALTH_SIZE, 0, // bottom right
+
+    HEALTH_SIZE, HEALTH_SIZE, 0, // top right
+    -HEALTH_SIZE, HEALTH_SIZE, 0, // top left
+    HEALTH_SIZE, -HEALTH_SIZE, 0 // bottom right
   ])
 
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
@@ -768,6 +802,15 @@ function makeZRotation (angleInRadians) {
     c, s, 0, 0,
     -s, c, 0, 0,
     0, 0, 1, 0,
+    0, 0, 0, 1
+  ]
+}
+
+function makeScale (sx, sy, sz) {
+  return [
+    sx, 0, 0, 0,
+    0, sy, 0, 0,
+    0, 0, sz, 0,
     0, 0, 0, 1
   ]
 }
