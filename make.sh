@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 export LAST_BUILD_SIZE=$(stat -f%z build/submission.zip)
+git checkout buildSize.txt
 export LAST_COMMIT_SIZE=$(cat buildSize.txt)
 rm -rf build
 mkdir build
