@@ -60,7 +60,7 @@ var entities = []
 
 function playerDeath () {
   shipVelY = shipX = shipY = 0
-  shipR = 0//MATH_PI / 2
+  shipR = MATH_PI / 2
   shipVelX = -2.5
   shipPower = POWER_MAX
 
