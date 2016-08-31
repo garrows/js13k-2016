@@ -176,6 +176,9 @@ document.onkeydown = document.onkeyup = function (e) {
 }
 
 var touchEvent = function (e) {
+  if (!document.webkitFullscreenElement && document.documentElement.webkitRequestFullscreen) {
+    document.documentElement.webkitRequestFullscreen()
+  }
   keyLeft = keyRight = keyUp = false
   keyLeft = Array.from(e.touches).some(function (t) { return t.clientX < WINDOW_INNERWIDTH / 2 })
   keyRight = Array.from(e.touches).some(function (t) { return t.clientX > WINDOW_INNERWIDTH / 2 })
