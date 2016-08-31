@@ -20,8 +20,8 @@ var POWER_MAX = 100
 var FOV = 1
 var Z_NEAR = 1
 var Z_FAR = 5000
-var LIGHT_X = 1
-var LIGHT_Y = 1
+var LIGHT_X = 0.3
+var LIGHT_Y = 0.7
 var LIGHT_Z = 1
 var CAMERA_DISTANCE = 500
 var POWER_BAR_WIDTH = 30
@@ -60,7 +60,7 @@ var entities = []
 
 function playerDeath () {
   shipVelY = shipX = shipY = 0
-  shipR = MATH_PI / 2
+  shipR = 0//MATH_PI / 2
   shipVelX = -2.5
   shipPower = POWER_MAX
 
@@ -169,7 +169,7 @@ document.addEventListener('touchstart', touchEvent, false)
 document.addEventListener('touchmove', touchEvent, false)
 document.addEventListener('touchend', touchEvent, false)
 
-window.onresize = playerDeath
+window.addEventListener('resize', playerDeath)
 
 var program = gl.createProgram()
 var newShader = function (id, type) {
@@ -380,22 +380,22 @@ function setGeometry (gl) {
 
   var positions = new Float32Array([
 
-    // front top right
+    // front under right
     0, TIP_LENGTH, 0, // tip
     0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // bottom
     WING_SPAN, WING_LENGTH, 0, // right
 
-    // front top left
+    // front under left
     0, TIP_LENGTH, 0, // tip
     -WING_SPAN, WING_LENGTH, 0, // left
     0, TOP_RIDGE_LENGTH, -MIDDLE_HEIGHT, // bottom
 
-    // front back right
+    // front above right
     0, TIP_LENGTH, 0, // tip
     WING_SPAN, WING_LENGTH, 0, // right
     0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // bottom
 
-    // front back left
+    // front above left
     0, TIP_LENGTH, 0, // tip
     0, TOP_RIDGE_LENGTH, MIDDLE_HEIGHT, // bottom
     -WING_SPAN, WING_LENGTH, 0, // left
@@ -497,6 +497,127 @@ function setGeometry (gl) {
   ])
 
   gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
+}
+
+function setNormals (gl) {
+  var normals = new Float32Array([
+    // front under right
+    0, 1, 0, // tip
+    0, 1, 0, // bottom
+    0, 1, 0, // right
+
+    // front under left
+    0, 1, 0, // tip
+    0, 1, 0, // left
+    0, 1, 0, // bottom
+
+    // front above right
+    0.5, 0.5, 0, // tip
+    0.5, 0.5, 0, // right
+    0.5, 0.5, 0, // bottom
+
+    // front above left
+    -0.5, 0.5, 0, // tip
+    -0.5, 0.5, 0, // bottom
+    -0.5, 0.5, 0, // left
+
+    // --------rear----------
+    // rear top right
+    0, 1, 0, // middle
+    0, 1, 0, // tip
+    0, 1, 0, // right
+
+    // rear top left
+    0, 1, 0, // middle
+    0, 1, 0, // right
+    0, 1, 0, // tip
+
+    // rear back right
+    0, 1, 0, // tip
+    0, 1, 0, // middle
+    0, 1, 0, // right
+
+    // rear back left
+    0, 1, 0, // middle
+    0, 1, 0, // tip
+    0, 1, 0, // right
+
+    1, 0, 0, // -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, left
+    1, 0, 0, // -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, left
+    1, 0, 0, // -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, left
+    0, 0, -1, // PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, under
+    0, 0, -1, // -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, under
+    0, 0, -1, // -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, under
+    0, 1, 0, // PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, bottom
+    0, 1, 0, // -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, bottom
+    0, 1, 0, // PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, bottom
+    0, 0, -1, // PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, under
+    0, 0, -1, // PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, under
+    0, 0, -1, // -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, under
+    1, 0, 0, // -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, left
+    1, 0, 0, // -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, left
+    1, 0, 0, // -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, left
+    0, 1, 0, // PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, bottom
+    0, 1, 0, // -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, bottom
+    0, 1, 0, // -PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, bottom
+    0, 0, 1, // -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, above
+    0, 0, 1, // -PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, above
+    0, 0, 1, // PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, above
+    1, 0, 0, // PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, right
+    1, 0, 0, // PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, right
+    1, 0, 0, // PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, right
+    1, 0, 0, // PLANET_WIDTH, -PLANET_WIDTH, -PLANET_WIDTH, right
+    1, 0, 0, // PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, right
+    1, 0, 0, // PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, right
+    0, 1, 0, // PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, top
+    0, 1, 0, // PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, top
+    0, 1, 0, // -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, top
+    0, 1, 0, // PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, top
+    0, 1, 0, // -PLANET_WIDTH, PLANET_WIDTH, -PLANET_WIDTH, top
+    0, 1, 0, // -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, top
+    0, 0, 1, // PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, above
+    0, 0, 1, // -PLANET_WIDTH, PLANET_WIDTH, PLANET_WIDTH, above
+    0, 0, 1, // PLANET_WIDTH, -PLANET_WIDTH, PLANET_WIDTH, above
+
+    // Star
+    0, 1, 0, // top
+    0, 1, 0, // bottom left
+    0, 1, 0, // bottom right
+
+    0, 1, 0, // bottom
+    0, 1, 0, // top right
+    0, 1, 0, // top left
+
+    // Thrust
+    0, 1, 0, // bottom
+    0, 1, 0, // top left
+    0, 1, 0, // top right
+
+    // Marker
+    0, 1, 0, // top
+    0, 1, 0, // right
+    0, 1, 0, // left
+
+    // Power Hud - bad color???
+    0, 1, 0, // top left
+    0, 1, 0, // bottom left
+    0, 1, 0, // bottom right
+
+    0, 1, 0, // top right
+    0, 1, 0, // top left
+    0, 1, 0, // bottom right
+
+    // Power Hud 2 - correct color
+    0, 1, 0, // top left
+    0, 1, 0, // bottom left
+    0, 1, 0, // bottom right
+
+    0, 1, 0, // top right
+    0, 1, 0, // top left
+    0, 1, 0 // bottom right
+
+  ])
+  gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW)
 }
 
 function makeTranslation (tx, ty, tz) {
@@ -665,134 +786,6 @@ function matrixMultiply (a, b) {
     a30 * b02 + a31 * b12 + a32 * b22 + a33 * b32,
     a30 * b03 + a31 * b13 + a32 * b23 + a33 * b33
   ]
-}
-
-function setNormals (gl) {
-  var normals = new Float32Array([
-    // left column front
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-
-    // top rung front
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-
-    // middle rung front
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-    0, 0, 1,
-
-    // left column back
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-
-    // top rung back
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-
-    // middle rung back
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-    0, 0, -1,
-
-    // top
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-
-    // top rung right
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-
-    // under top rung
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-
-    // between top rung and middle
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-
-    // top of middle rung
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-    0, 1, 0,
-
-    // right of middle rung
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-
-    // bottom of middle rung.
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-
-    // right of bottom
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-    1, 0, 0,
-
-    // bottom
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-    0, -1, 0,
-
-    // left side
-    -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0
-  ])
-  gl.bufferData(gl.ARRAY_BUFFER, normals, gl.STATIC_DRAW)
 }
 
 function makeZRotation (angleInRadians) {
