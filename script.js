@@ -161,8 +161,8 @@ document.onkeydown = document.onkeyup = function (e) {
 
 var touchEvent = function (e) {
   keyLeft = keyRight = keyUp = false
-  keyLeft = Array.from(e.touches).some(function (t) { t.clientX < WINDOW_INNERWIDTH / 2 })
-  keyRight = Array.from(e.touches).some(function (t) { t.clientX > WINDOW_INNERWIDTH / 2 })
+  keyLeft = Array.from(e.touches).some(function (t) { return t.clientX < WINDOW_INNERWIDTH / 2 })
+  keyRight = Array.from(e.touches).some(function (t) { return t.clientX > WINDOW_INNERWIDTH / 2 })
   keyUp = keyLeft && keyRight
 }
 document.addEventListener('touchstart', touchEvent, false)
