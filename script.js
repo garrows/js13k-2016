@@ -6,7 +6,7 @@ var WINDOW_INNERWIDTH = window.innerWidth
 var MATH_RANDOM = Math.random
 var MATH_PI = Math.PI
 
-var LOST_DEATH_DISTANCE = 10000
+var LOST_DEATH_DISTANCE = 6000
 var LAZY_MULTIPLIER_FIX_ME = 8
 var MAX_PLANET_G_FORCE_REACH = 1000
 var STAR_COUNT = 150
@@ -74,6 +74,8 @@ function playerDeath () {
 
   entities.push([ 'planet', shipX, shipY - 400 ])
   entities.push([ 'planet', shipX + 1500, shipY - 400 ])
+  entities.push([ 'planet', shipX + 3000, shipY - 400 ])
+  entities.push([ 'planet', shipX + 4500, shipY - 400 ])
 
   i = 170
   entities.push([ 'marker', shipX + 400, shipY - (i += 80) ])
@@ -81,6 +83,20 @@ function playerDeath () {
   entities.push([ 'marker', shipX + 800, shipY - (i += 80) ])
   entities.push([ 'marker', shipX + 1000, shipY - (i += 80) ])
   entities.push([ 'marker', shipX + 1200, shipY - (i += 80) ])
+
+  i = 170 + 80 * 5
+  entities.push([ 'marker', shipX + 1500 + 400, shipY - (i -= 80) ])
+  entities.push([ 'marker', shipX + 1500 + 600, shipY - (i -= 80) ])
+  entities.push([ 'marker', shipX + 1500 + 800, shipY - (i -= 80) ])
+  entities.push([ 'marker', shipX + 1500 + 1000, shipY - (i -= 80) ])
+  entities.push([ 'marker', shipX + 1500 + 1200, shipY - (i -= 80) ])
+
+  i = 170
+  entities.push([ 'marker', shipX + 3000 + 400, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 3000 + 600, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 3000 + 800, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 3000 + 1000, shipY - (i += 80) ])
+  entities.push([ 'marker', shipX + 3000 + 1200, shipY - (i += 80) ])
 }
 playerDeath()
 
@@ -244,23 +260,23 @@ function drawScene (timestamp) {
   shipX -= shipVelX
   shipY -= shipVelY
 
-  var largestDistanceFromPlanet = 0
+  var largestDyFromPlanet = 0
   entities.forEach(function (e, idx) {
-    var tx = shipX - e[1]
-    var ty = shipY - e[2]
-    var dist = Math.sqrt(tx * tx + ty * ty)
-    largestDistanceFromPlanet = largestDistanceFromPlanet > dist ? largestDistanceFromPlanet : dist
+    var dx = shipX - e[1]
+    var dy = shipY - e[2]
+    var dist = Math.sqrt(dx * dx + dy * dy)
+    largestDyFromPlanet = largestDyFromPlanet > Math.abs(dy) ? largestDyFromPlanet : Math.abs(dy)
     switch (e[0]) {
       case 'planet':
         if (dist > MAX_PLANET_G_FORCE_REACH) return
         shipPower = shipPower > POWER_MAX ? POWER_MAX : shipPower + dt / (dist / POWER_RECHARGE)
-        if (Math.abs(tx) < 100 && Math.abs(ty) < 100) {
+        if (Math.abs(dx) < 100 && Math.abs(dy) < 100) {
           playerDeath()
           return
         }
 
-        shipVelX += (tx / dist) * 0.5 * dt / dist
-        shipVelY += (ty / dist) * 0.5 * dt / dist
+        shipVelX += (dx / dist) * 0.5 * dt / dist
+        shipVelY += (dy / dist) * 0.5 * dt / dist
         break
       case 'marker':
         if (dist < MARKER_COLLISTION_DIST) {
@@ -272,7 +288,7 @@ function drawScene (timestamp) {
         break
     }
   })
-  if (largestDistanceFromPlanet > LOST_DEATH_DISTANCE) playerDeath()
+  if (largestDyFromPlanet > LOST_DEATH_DISTANCE) playerDeath()
 
   // Compute the matrices
   var aspect = canvas.width / canvas.height
