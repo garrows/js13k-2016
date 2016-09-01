@@ -25,6 +25,7 @@ var LIGHT_Y = 0.7
 var LIGHT_Z = 1
 var CAMERA_DISTANCE = 500
 var POWER_BAR_WIDTH = 30
+var PLANET_SPACING = 1500
 
 var BUFFER_SHIP_START = 0
 var BUFFER_SHIP_LENGTH = 24
@@ -38,8 +39,6 @@ var BUFFER_MARKER_START = BUFFER_THRUST_START + BUFFER_THRUST_LENGTH
 var BUFFER_MARKER_LENGTH = 3
 var BUFFER_POWER_START = BUFFER_MARKER_START + BUFFER_MARKER_LENGTH
 var BUFFER_POWER_LENGTH = 6
-var BUFFER_POWER2_START = BUFFER_POWER_START + BUFFER_POWER_LENGTH
-var BUFFER_POWER2_LENGTH = 6
 
 var shipX = 0
 var shipY = 0
@@ -72,10 +71,10 @@ function playerDeath () {
     entities.push([ 'star', x, y ])
   }
 
-  entities.push([ 'planet', shipX, shipY - 400 ])
-  entities.push([ 'planet', shipX + 1500, shipY - 400 ])
-  entities.push([ 'planet', shipX + 3000, shipY - 400 ])
-  entities.push([ 'planet', shipX + 4500, shipY - 400 ])
+  // entities.push([ 'planet', shipX, shipY - 400 ])
+  // entities.push([ 'planet', shipX + 1500, shipY - 400 ])
+  // entities.push([ 'planet', shipX + 3000, shipY - 400 ])
+  // entities.push([ 'planet', shipX + 4500, shipY - 400 ])
 
   i = 170
   entities.push([ 'marker', shipX + 400, shipY - (i += 80) ])
@@ -264,7 +263,11 @@ function drawScene (timestamp) {
   shipY -= shipVelY
 
   var largestDyFromPlanet = 0
-  entities.forEach(function (e, idx) {
+
+  var tempEntities = []
+  tempEntities.push(['planet', Math.round(shipX / PLANET_SPACING) * PLANET_SPACING, -400])
+
+  entities.concat(tempEntities).forEach(function (e, idx) {
     var dx = shipX - e[1]
     var dy = shipY - e[2]
     var dist = Math.sqrt(dx * dx + dy * dy)
@@ -352,7 +355,7 @@ function drawScene (timestamp) {
         break
       case 'power':
         gl.uniform4fv(colorLocation, [ 1 - shipPower / POWER_MAX, shipPower / POWER_MAX, 0, 1 ])
-        gl.drawArrays(gl.TRIANGLES, BUFFER_POWER2_START, BUFFER_POWER2_LENGTH)
+        gl.drawArrays(gl.TRIANGLES, BUFFER_POWER_START, BUFFER_POWER_LENGTH)
         break
       default:
         throw new Error('up')
@@ -368,7 +371,7 @@ function drawScene (timestamp) {
     stopThrustSound()
   }
 
-  entities.forEach(function (e) { drawEntity.apply(this, e) })
+  entities.concat(tempEntities).forEach(function (e) { drawEntity.apply(this, e) })
 
   requestAnimationFrame(drawScene)
 }
@@ -496,16 +499,7 @@ function setGeometry (gl) {
     MARKER_SIZE, MARKER_SIZE, 0, // right
     -MARKER_SIZE, MARKER_SIZE, 0, // left
 
-    // Power Hud - bad color???
-    -HEALTH_SIZE, HEALTH_SIZE, -10, // top left
-    -HEALTH_SIZE, -HEALTH_SIZE, 10, // bottom left
-    HEALTH_SIZE, -HEALTH_SIZE, 10, // bottom right
-
-    HEALTH_SIZE, HEALTH_SIZE, 10, // top right
-    -HEALTH_SIZE, HEALTH_SIZE, -10, // top left
-    HEALTH_SIZE, -HEALTH_SIZE, -10, // bottom right
-
-    // Power Hud 2 - correct color
+    // Power Hud - correct color
     -HEALTH_SIZE, HEALTH_SIZE, 0, // top left
     -HEALTH_SIZE, -HEALTH_SIZE, 0, // bottom left
     HEALTH_SIZE, -HEALTH_SIZE, 0, // bottom right
